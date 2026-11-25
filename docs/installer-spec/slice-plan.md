@@ -42,7 +42,7 @@ The commander's draft order was: trust chain and build script; input schema and 
 ### SL-2 Trust chain
 
 - ARCH: ARCH-1
-- Requirements: INST-REQ-001, INST-REQ-002, INST-REQ-003, INST-REQ-004, INST-REQ-056, INST-REQ-067, INST-REQ-086
+- Requirements: INST-REQ-001, INST-REQ-002, INST-REQ-003, INST-REQ-004, INST-REQ-056, INST-REQ-067, INST-REQ-086, INST-REQ-103
 - Depends-on: SL-1
 - Paths: installer/trust.py, installer/nsis/trust.nsh, installer/nsis/main.nsi, tests/test_installer_trust.py
 - Host verification: Python reference model of the state machine (first run, same signer, different signer, key replacement) tested on the host; `pwsh` parse-only check of the PowerShell helper; `makensis` compile where available

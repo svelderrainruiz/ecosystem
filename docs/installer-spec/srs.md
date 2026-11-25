@@ -8,13 +8,14 @@ Priority: M = must, S = should. Method: T = test, I = inspection, D = demonstrat
 
 | Id | Requirement | Decision | Prio | Method | Test |
 |----|-------------|----------|------|--------|------|
-| INST-REQ-001 | The installer shall, on the first run on a PC, show the signer's fingerprint and require the user to confirm that it matches the fingerprints published in two independent places before any build step starts. | D-R4-1 | M | D | INST-TC-001 |
+| INST-REQ-001 | The installer shall, on the first run on a PC, show the signer's fingerprint and require the user to confirm that it matches the fingerprints published in two independent places before any build step starts (a run with a window started without the fingerprint asks for it first, INST-REQ-103). | D-R4-1 | M | D | INST-TC-001 |
 | INST-REQ-002 | The installer shall store the confirmed fingerprint locally. | D-R4-1 | M | T | INST-TC-002 |
 | INST-REQ-003 | The installer shall, when the signer differs from the stored one, stop before any build step, show the old and the new fingerprint, and ask again. | D-R4-1 | M | T | INST-TC-003 |
 | INST-REQ-004 | The installer shall show, on the confirmation screen before anything is built or started, exactly these items and no others: the version, who signed, whether a second builder got the same file (shown as "not yet checked" until two builders have matched), what changed since last time, which folder, Windows service and uninstall entry it touches, whether it needs administrator rights, and which internet addresses it contacts (closed list given by the commander from the Round 4 text). | D-R3-2, D-R5-4, D-R6-4, D-R6-7 | M | D | INST-TC-004 |
 | INST-REQ-005 | The source repository shall contain no installer `.exe` and no signature file, because each release is identified by its SSH-signed Git tag. | D-R2-6, D-R1-2, D-R6-1 | M | I | INST-TC-005 |
 | INST-REQ-006 | The build script shall compare the sha256 of the installer it built with the one published beside the SSH-signed release tag and report match or mismatch. | D-R1-2, D-R6-1 | M | T | INST-TC-006 |
 | INST-REQ-067 | The installer shall not repeat the fingerprint pause while the signer is unchanged. | D-R4-1 | M | T | INST-TC-002 |
+| INST-REQ-103 | The installer shall, when a run with a window that is not the elevated copy starts without a signer fingerprint (a double click), ask for the 64 hex digits on a page shown before every other page, keep that page with a box naming the problem while the typed value is malformed, apply INST-REQ-001, 002, 003 and 067 to the typed fingerprint as to a given one (a No or a refusal ends the run with exit code 3), and hand it to the elevated copy; a given malformed fingerprint, a silent run and the elevated copy are refused as before. | D-R4-1 | M | T | INST-TC-059 |
 | INST-REQ-068 | Each signed release shall publish only the expected fingerprint (hash) of the installer. | D-R2-6, D-R1-2 | M | I | INST-TC-005 |
 
 ## 2. Build from source
@@ -141,4 +142,4 @@ Priority: M = must, S = should. Method: T = test, I = inspection, D = demonstrat
 | INST-REQ-097 | The operator's own-PC test shall be completed before the first partner joins (INFERRED). | INFERRED | S | I | INST-TC-051 |
 | INST-REQ-101 | The source repository's rules shall accept changes by pull request only, never run a pull request from a fork on any self-hosted runner, and name the operator as the only code owner. | D-R6-9 | M | I | INST-TC-057 |
 
-Requirement count: 101.
+Requirement count: 102.

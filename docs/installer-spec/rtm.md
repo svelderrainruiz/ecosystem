@@ -13,6 +13,7 @@ Private until the operator publishes it. Every requirement has a decision (or th
 | INST-REQ-005 | D-R2-6, D-R1-2, D-R6-1 | ARCH-1, ARCH-2 | INST-TC-005 | specified |
 | INST-REQ-006 | D-R1-2, D-R6-1 | ARCH-1, ARCH-2 | INST-TC-006 | specified |
 | INST-REQ-067 | D-R4-1 | ARCH-1 | INST-TC-002 | specified |
+| INST-REQ-103 | D-R4-1 | ARCH-1, ARCH-5 | INST-TC-059 | specified |
 | INST-REQ-068 | D-R2-6, D-R1-2 | ARCH-1 | INST-TC-005 | specified |
 | INST-REQ-007 | D-R4-5 | ARCH-2 | INST-TC-007 | specified |
 | INST-REQ-008 | D-R4-5 | ARCH-2 | INST-TC-007 | specified |
@@ -131,7 +132,7 @@ Private until the operator publishes it. Every requirement has a decision (or th
 | D-R3-4 | INST-REQ-030, INST-REQ-031, INST-REQ-043, INST-REQ-084, INST-REQ-089 |
 | D-R3-5 | Superseded by D-R6-3 (INST-REQ-057) |
 | D-R3-6 | INST-REQ-012, INST-REQ-029 |
-| D-R4-1 | INST-REQ-001, INST-REQ-002, INST-REQ-003, INST-REQ-067 |
+| D-R4-1 | INST-REQ-001, INST-REQ-002, INST-REQ-003, INST-REQ-067, INST-REQ-103 |
 | D-R4-2 | INST-REQ-016, INST-REQ-017, INST-REQ-018, INST-REQ-073 |
 | D-R4-3 | INST-REQ-061, INST-REQ-063, INST-REQ-088 |
 | D-R4-4 | Not a requirement: the VM panel is an extension feature outside the installer (see architecture, section 9). |

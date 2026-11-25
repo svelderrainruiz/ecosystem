@@ -5,7 +5,7 @@ from pathlib import Path
 
 NSIS = Path(__file__).resolve().parent.parent / "installer" / "nsis"
 
-PAGES = [("Page_mode_Pre", "Page_mode_Leave"), ("Page_folders", "Page_folders_Leave"), ("Page_forge", "Page_forge_Leave"), ("Page_network", "Page_network_Leave"), ("Page_labview", "Page_labview_Leave"), ("Page_image", "Page_image_Leave"),
+PAGES = [("Page_signer", "Page_signer_Leave"), ("Page_mode_Pre", "Page_mode_Leave"), ("Page_folders", "Page_folders_Leave"), ("Page_forge", "Page_forge_Leave"), ("Page_network", "Page_network_Leave"), ("Page_labview", "Page_labview_Leave"), ("Page_image", "Page_image_Leave"),
          ("Page_licences", "Page_licences_Leave"), ("Page_secrets", "Page_secrets_Leave"), ("Page_noadmin", None), ("Page_elevation", "Page_elevation_Leave")]
 
 ELEVATION_TEXTS = [
