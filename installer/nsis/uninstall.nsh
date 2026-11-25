@@ -1,4 +1,4 @@
-; Uninstall (ARCH-9, INST-REQ-043 to 045, 078, 084, 095, 096). Mirrors installer/update.py uninstall and installer/winsys.py. No network is used.
+; Uninstall (ARCH-9, INST-REQ-043 to 045, 078, 084, 095, 096, 104). Mirrors installer/update.py uninstall and installer/winsys.py. No network is used.
 ; The uninstaller section at the end calls them (un. prefix). The service is stopped (and waited for) and deleted first, then the folder and the 64-bit registry entry.
 ; The uninstall entry and the folder are removed here; the service is removed by the same logic. A registration is never reported
 ; as removed unless the forge confirmed it; otherwise the place at the forge is listed.
@@ -26,18 +26,61 @@ Function un.Elevate_IsAdmin
   ${EndIf}
 FunctionEnd
 
-; INST-REQ-078, defence in depth: RequestExecutionLevel user in main.nsi applies to this uninstaller too. A standard user cannot even start the
-; installed uninstall.exe (the folder is locked), so this guards the case where it is started anyway. Nothing has been touched at this point.
-; Not an administrator: exit code 38 (footprint.json not-elevated); interactive, one message first. No relaunch with runas.
+; INST-REQ-078, 104: RequestExecutionLevel user in main.nsi applies to this uninstaller too, so Settings > Apps starts it without administrator
+; rights. Nothing has been touched at this point. Not an administrator and a window (UNINST-2, #335): un.Elevate_Raise asks Windows for the
+; rights ONCE and hands over to the elevated copy; it comes back only when nothing was handed over. Then, and in a silent run (which never
+; shows a prompt), exit code 38 (footprint.json not-elevated); with a window, one message first.
 Function un.onInit
   Call un.Elevate_IsAdmin
   ${If} $unelev_isadmin == 0
+    ${IfNot} ${Silent}
+      Call un.Elevate_Raise
+    ${EndIf}
     SetErrorLevel 38
     ${IfNot} ${Silent}
       MessageBox MB_OK|MB_ICONSTOP "Uninstalling needs administrator rights. Start the uninstall as an administrator." /SD IDOK
     ${EndIf}
     Quit
   ${EndIf}
+FunctionEnd
+
+; The one place the uninstaller raises rights; un.onInit is its only caller. It starts THIS file again ($EXEPATH) with the verb runas and the
+; parameters "/ELEVATED _?=$INSTDIR", waits for that copy and quits with its exit code. It returns, having handed nothing over, when the
+; prompt is declined (ShellExecuteExW answers 0) or when this run is already the elevated copy, so un.onInit ends with 38 as before.
+; Which file: started by the registered strings, the first stage has copied uninstall.exe to %TEMP% and started that copy with _?=, so
+; $EXEPATH is the copy and $INSTDIR the product folder; started in place (uninstall.exe _?=<folder>) $EXEPATH is the installed file. Either
+; way $EXEPATH is the file this process could start, and the elevated copy runs where an administrator's start of the same form would run.
+; Not $INSTDIR\uninstall.exe: its folder is locked to administrators, and a run from inside it cannot delete itself (un.Uninstall_OnlySelfLeft).
+; Why _?=$INSTDIR, last and unquoted as the stub wants it: without it the elevated copy would copy itself to %TEMP% once more, start that
+; copy and return 0 at once, so its exit code would be lost; with it the copy runs where it is, on the same folder.
+; Why /ELEVATED: the stub cuts the command line at " _?=", so the elevated copy's parameters are exactly "/ELEVATED". A run with them never
+; raises again, even when Windows gave it no administrator rights, so there is no loop. Nothing else is handed over: the uninstaller reads
+; no other word (it has no answers, /S never gets here, the stub cuts /D=); the program path is not taken from $CMDLINE (it would come twice).
+; SHELLEXECUTEINFOW (15 fields) with fMask 0x540: SEE_MASK_NOCLOSEPROCESS 0x40 for the process handle, plus SEE_MASK_FLAG_DDEWAIT 0x100 and
+; SEE_MASK_FLAG_NO_UI 0x400 as ExecShellWait sets them (v310 Source/script.cpp). ExecShellWait itself throws the exit code away.
+; The copy ran but its exit code cannot be read (no handle, or GetExitCodeProcess fails): exit code 51 (footprint.json elevated-exit-unknown).
+Function un.Elevate_Raise
+  ${un.GetParameters} $1
+  ${If} $1 == "/ELEVATED"
+    Return
+  ${EndIf}
+  System::Call '*(&l4, i 0x540, p $HWNDPARENT, w "runas", w "$EXEPATH", w "/ELEVATED _?=$INSTDIR", p 0, i 1, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r1'
+  System::Call 'shell32::ShellExecuteExW(p r1) i .r0'
+  ${If} $0 == 0
+    System::Free $1
+    Return
+  ${EndIf}
+  System::Call '*$1(i, i, p, p, p, p, p, i, p, p, p, p, i, p, p .r2)'
+  System::Free $1
+  System::Call 'kernel32::WaitForSingleObject(p r2, i -1) i .r0'
+  System::Call 'kernel32::GetExitCodeProcess(p r2, *i .r3) i .r0'
+  System::Call 'kernel32::CloseHandle(p r2)'
+  ${If} $0 == 0
+    SetErrorLevel 51
+  ${Else}
+    SetErrorLevel $3
+  ${EndIf}
+  Quit
 FunctionEnd
 
 ; The one way an uninstall ends when something is left: say what, set the exit code (footprint.json uninstall-stopped, the kind of

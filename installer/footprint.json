@@ -52,7 +52,8 @@
     "state-invalid": 45,
     "image-pull-failed": 46,
     "uninstaller-write-failed": 48,
-    "state-write-failed": 49
+    "state-write-failed": 49,
+    "elevated-exit-unknown": 51
   },
   "exec_allowed": [
     {

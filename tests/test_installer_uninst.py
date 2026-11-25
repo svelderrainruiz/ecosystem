@@ -19,6 +19,7 @@ from unittest import mock
 
 from installer import footprint, update, winsys
 from installer.guest import pack
+from tests.nsis_interp import get_parameters
 from tests.test_installer_update import Base, FakeSystem
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -77,11 +78,16 @@ class World:
     P1, and GUEST7A, winev-run-afbbd3e1) the recursive RMDir FOLLOWS a directory link and empties its target; the plain RMDir removes a directory
     link and never its target and leaves a file link; Delete removes a file link and does nothing to a directory link; a code that lists or
     enters a link sees the target. `attr_errors`, `attr_blank` and `attr_flagged` name the attribute reads that fail: a path (every read of that
-    entry) or a pair (path, attribute) for one read, for example the DIRECTORY read of a link (see `attributes`)."""
+    entry) or a pair (path, attribute) for one read, for example the DIRECTORY read of a link (see `attributes`).
+    UNINST-2, the start of this copy: `args` are its parameters as the stub left them ($CMDLINE is the quoted $EXEPATH, a blank, `args`;
+    `cmdline` replaces all of it), `instdir` its $INSTDIR. A relaunch through ShellExecuteExW (see `shell_execute`) is answered by `uac`
+    ("decline" or "accept"); the elevated copy ends with `elevated` (an exit code, or a function that runs it, see `elevated_copy`).
+    `no_handle`: Windows hands back no process handle; `exit_unreadable`: GetExitCodeProcess fails."""
 
     def __init__(self, stop=(0,), query=("STOPPED",), delete=(0,), files=(), locked=(), unlock_after=None, stuck_folder=False,
                  admin=True, silent=True, exedir=r"C:\Users\u\AppData\Local\Temp\~nsu.tmp", exefile="Au_.exe",
-                 dirs=(), links=None, outside=(), attr_errors=(), attr_blank=(), attr_flagged=(), list_errors=(), stuck_links=()):
+                 dirs=(), links=None, outside=(), attr_errors=(), attr_blank=(), attr_flagged=(), list_errors=(), stuck_links=(),
+                 args="", cmdline=None, instdir=FOLDER, uac="decline", elevated=0, no_handle=False, exit_unreadable=False):
         self.answers = {"stop": list(stop), "query": list(query), "delete": list(delete)}
         self.files, self.locked, self.unlock_after = set(files), set(locked), unlock_after
         self.stuck_folder, self.folder, self.slept = stuck_folder, True, 0
@@ -92,6 +98,10 @@ class World:
         self.asked = []  # every path the code asked about, as written (before "." and ".." are resolved)
         self.listed = []  # every folder a FindFirst was run on, so a test can show that a link was never entered
         self.dirs = set(dirs)
+        self.cmdline = f'"{exedir}\\{exefile}" {args}' if cmdline is None else cmdline
+        self.instdir, self.uac, self.elevated = instdir, uac, elevated
+        self.no_handle, self.exit_unreadable = no_handle, exit_unreadable
+        self.relaunches, self.starts, self.procs, self.copies = [], [], {}, []  # procs: open process handle -> [exit code, waited]
         for p in (*self.files, *self.dirs, *self.links):
             parts = p.split("\\")
             self.dirs |= {"\\".join(parts[:i]) for i in range(1, len(parts))}
@@ -258,13 +268,52 @@ class World:
         if self.unlock_after is not None and self.slept >= self.unlock_after * 1000:
             self.locked = set()
 
+    def shell_execute(self, info):
+        """ShellExecuteExW on a SHELLEXECUTEINFOW (its 15 fields; x86, so cbSize is 60): `relaunches` records (verb, file, parameters),
+        `starts` the whole struct. A declined prompt answers FALSE and starts nothing. Accepted, the copy runs to its end here (the caller
+        sees it end only by waiting, see `wait`); with SEE_MASK_NOCLOSEPROCESS (0x40) its process handle goes into hProcess, the last field."""
+        assert len(info) == 15 and info[0] == 60, info
+        self.relaunches.append((info[3], info[4], info[5]))
+        self.starts.append(list(info))
+        if len(self.relaunches) > 5:
+            raise Runaway("relaunch after relaunch")
+        if self.uac != "accept":
+            return False
+        code = self.elevated(self, info[4], info[5]) if callable(self.elevated) else self.elevated
+        if info[1] & 0x40 and not self.no_handle:
+            info[14] = 0x1F0 + 4 * len(self.relaunches)
+            self.procs[str(info[14])] = [code, False]
+        return True
+
+    def wait(self, handle, ms):
+        """WaitForSingleObject: 0 once the copy has ended (INFINITE, -1, waits for that); 258 (WAIT_TIMEOUT) for a shorter wait; -1
+        (WAIT_FAILED, read as a signed i) for a handle that is not open."""
+        if handle not in self.procs:
+            return -1
+        if ms != -1:
+            return 258
+        self.procs[handle][1] = True
+        return 0
+
+    def exit_code(self, handle):
+        """GetExitCodeProcess: (ok, code). 259 (STILL_ACTIVE) for a copy nobody waited for; not ok for a handle that is not open."""
+        if handle not in self.procs or self.exit_unreadable:
+            return False, 0
+        code, waited = self.procs[handle]
+        return True, code if waited else 259
+
+    def close(self, handle):
+        self.procs.pop(handle, None)
+
 
 class Nsis:
     """Runs the NSIS subset that uninstall.nsh uses. An instruction it does not know raises, so a new one forces this class to grow."""
 
     def __init__(self, text, world):
         self.w, self.fn = world, self.parse(text + ("\n" + tree_text() if '!include "tree.nsh"' in text else ""))
-        self.v = {"SYSDIR": r"C:\Windows\System32", "APPDATA": r"C:\ProgramData", "EXEDIR": world.exedir, "EXEFILE": world.exefile}
+        self.v = {"SYSDIR": r"C:\Windows\System32", "APPDATA": r"C:\ProgramData", "EXEDIR": world.exedir, "EXEFILE": world.exefile,
+                  "EXEPATH": world.exedir + "\\" + world.exefile, "CMDLINE": world.cmdline, "INSTDIR": world.instdir, "HWNDPARENT": "0"}
+        self.mem, self.allocs = {}, 0  # the structs System::Call allocated and System::Free has not released, by address
         self.stack, self.log, self.sleeps, self.boxes, self.keys, self.finds, self.errorlevel = [], [], [], [], [], {}, 0
         self.errors, self.handles = False, 0  # the error flag; the last find handle handed out
         self.ops, self.called = [], []  # `log` holds the sc verbs; `ops` the Delete and RMDir calls; `called` every Call
@@ -322,6 +371,52 @@ class Nsis:
         if op == "==":
             return a.lower() == b.lower()
         return int(a) < int(b) if op == "<" else int(a) > int(b)
+
+    def system(self, spec):
+        """System::Call (NSIS 3.10 Contrib/System, x86-unicode: an i, p or w field is 4 bytes) for the calls uninstall.nsh makes; another
+        call raises. rN is register $N; a struct lives in `mem` from "*(...) p .rN" to System::Free."""
+        m = re.fullmatch(r'kernel32::RemoveDirectoryW\(w "(.*)"\) i \.s', spec)
+        if m:
+            self.ops.append("removedirectory " + (self.w.rel(m.group(1)) or "."))
+            self.stack.append(str(self.w.remove_directory(m.group(1))))
+            return
+        m = re.fullmatch(r"\*\((.*)\) p \.r(\d)", spec)
+        if m:
+            fields = re.findall(r'&l4|[ip] -?\w+|w "[^"]*"', m.group(1))
+            assert ", ".join(fields) == m.group(1), spec
+            self.allocs += 1
+            addr = str(0x10000 * self.allocs)
+            self.mem[addr] = [4 * len(fields) if f == "&l4" else f[3:-1] if f[0] == "w" else int(f[2:], 0) for f in fields]
+            self.v[m.group(2)] = addr
+            return
+        m = re.fullmatch(r"\*(\d+)\((.*)\)", spec)
+        if m:
+            info, fields = self.mem[m.group(1)], m.group(2).split(", ")
+            assert len(fields) == len(info), spec
+            for f, value in zip(fields, info):
+                out = re.fullmatch(r"[ip](?: \.r(\d))?", f)
+                assert out, spec
+                if out.group(1):
+                    self.v[out.group(1)] = str(value)
+            return
+        m = re.fullmatch(r"shell32::ShellExecuteExW\(p r(\d)\) i \.r(\d)", spec)
+        if m:
+            self.v[m.group(2)] = "1" if self.w.shell_execute(self.mem[self.v[m.group(1)]]) else "0"
+            return
+        m = re.fullmatch(r"kernel32::WaitForSingleObject\(p r(\d), i (-?\d+)\) i \.r(\d)", spec)
+        if m:
+            self.v[m.group(3)] = str(self.w.wait(self.v[m.group(1)], int(m.group(2))))
+            return
+        m = re.fullmatch(r"kernel32::GetExitCodeProcess\(p r(\d), \*i \.r(\d)\) i \.r(\d)", spec)
+        if m:
+            ok, code = self.w.exit_code(self.v[m.group(1)])
+            self.v[m.group(2)], self.v[m.group(3)] = str(code), "1" if ok else "0"
+            return
+        m = re.fullmatch(r"kernel32::CloseHandle\(p r(\d)\)", spec)
+        if m:
+            self.w.close(self.v[m.group(1)])
+            return
+        raise AssertionError("System call not supported by the test interpreter: " + spec)
 
     def start(self, name):
         """Runs one function (or "section"); True when the script quit."""
@@ -385,11 +480,11 @@ class Nsis:
             name = a[0][1:]
             self.v[name], self.stack[-1] = self.stack[-1], self.v.get(name, "")
         elif op == "system::call":
-            m = re.fullmatch(r'kernel32::RemoveDirectoryW\(w "(.*)"\) i \.s', self.s(" ".join(a)))
-            if not m:
-                raise AssertionError("System call not supported by the test interpreter: " + " ".join(a))
-            self.ops.append("removedirectory " + (self.w.rel(m.group(1)) or "."))
-            self.stack.append(str(self.w.remove_directory(m.group(1))))
+            self.system(self.s(" ".join(a)))
+        elif op == "system::free":
+            del self.mem[self.s(a[0])]
+        elif op == "${un.getparameters}":
+            self.v[a[0][1:]] = get_parameters(self.v["CMDLINE"])  # FileFunc's GetParameters_: never touches the error flag
         elif op == "call":
             self.call(a[0])
         elif op in ("nsexec::exec", "nsexec::exectostack"):
@@ -426,7 +521,7 @@ class Nsis:
             if not (self.w.silent and "/SD" in a):
                 self.boxes.append(self.s(a[1]))
         elif op == "seterrorlevel":
-            self.errorlevel = int(a[0])
+            self.errorlevel = int(self.s(a[0]))
         elif op == "quit":
             raise Quit
         elif op == "userinfo::getaccounttype":
@@ -920,7 +1015,8 @@ class U3AdminGate(unittest.TestCase):
         self.assertEqual((n.errorlevel, n.log, n.boxes, n.keys), (38, [], [], []))
 
     def test_a_non_administrator_in_interactive_mode_gets_one_message_u3(self):
-        n = Nsis(UNINSTALL, World(admin=False, silent=False))
+        """With a window the uninstaller first asks for the rights (UNINST-2, below); declined, it ends as before."""
+        n = Nsis(UNINSTALL, World(admin=False, silent=False, uac="decline"))
         self.assertTrue(n.start("un.onInit"))
         self.assertEqual((n.errorlevel, n.log, n.keys), (38, [], []))
         self.assertEqual(len(n.boxes), 1)
@@ -950,6 +1046,200 @@ class U3AdminGate(unittest.TestCase):
         self.assertRegex(UNINSTALL, r'(?m)^!include "LogicLib.nsh"$')
         self.assertRegex(UNINSTALL, r"(?m)^Var unelev_isadmin$")
         self.assertNotIn("$elev_isadmin", UNINSTALL.replace("$unelev_isadmin", ""))
+
+
+TEMP_COPY = r"C:\Users\u\AppData\Local\Temp\~nsu.tmp\Au_.exe"  # the World's default $EXEPATH: the stub's copy in %TEMP%
+RAISE_PARAMETERS = "/ELEVATED _?=" + FOLDER
+
+
+def elevated_copy(text=UNINSTALL, admin=True):
+    """`elevated` for World: the copy an accepted prompt starts, on the same machine (a shallow copy of the World: same files, service,
+    relaunch record). Windows starts `file` with the command line "file" and the parameters. The stub (NSIS 3.10 Source/exehead/Main.c) runs
+    in place only when that line holds " _?=": $CMDLINE is cut before the last one, $INSTDIR is the rest. Without it the stub's first stage
+    copies the file to %TEMP%, starts that copy with _?= and returns 0 at once, the copy running on unwatched. The copy runs un.onInit and,
+    unless that quit, the uninstall section; its exit code. `admin`: whether Windows really gave it administrator rights."""
+    def run(world, file, params):
+        line = f'"{file}" {params}'
+        cut = line.rfind(" _?=")
+        if cut < 0:
+            run(world, TEMP_COPY, f"{params} _?={file.rsplit(chr(92), 1)[0]}")
+            return 0
+        copy_ = __import__("copy").copy(world)
+        copy_.exedir, copy_.exefile = file.rsplit("\\", 1)
+        copy_.cmdline, copy_.instdir, copy_.admin = line[:cut], line[cut + 4:], admin
+        copy_.silent = "/S" in line[:cut].split()[1:]
+        n = Nsis(text, copy_)
+        world.copies.append(n)
+        n.start("un.onInit") or n.start("section")
+        return n.errorlevel
+    return run
+
+
+class Uninst2RelaunchElevated(unittest.TestCase):
+    """UNINST-2 (#335), INST-REQ-104: started with a window and without administrator rights, uninstall.exe asks Windows once (runas) and
+    hands over to the elevated copy, whose exit code becomes its own. Declined, or silent (never a prompt): exit code 38 as before."""
+
+    def run_gate(self, text=UNINSTALL, **kw):
+        w = World(**kw)
+        n = Nsis(text, w)
+        return w, n, n.start("un.onInit")
+
+    def test_a_declined_prompt_ends_with_38_and_the_one_message_uninst2(self):
+        """One request, for this very file on this folder; declined, the old end: 38, one message, nothing touched, nothing left open."""
+        w, n, quit_ = self.run_gate(admin=False, silent=False, uac="decline")
+        self.assertTrue(quit_)
+        self.assertEqual(w.relaunches, [("runas", TEMP_COPY, RAISE_PARAMETERS)])
+        self.assertEqual((n.errorlevel, n.log, n.keys, n.ops, n.mem), (38, [], [], [], {}))
+        self.assertEqual(n.boxes, ["Uninstalling needs administrator rights. Start the uninstall as an administrator."])
+
+    def test_an_accepted_prompt_ends_with_the_elevated_copys_exit_code_uninst2(self):
+        """The first copy waits and quits with the elevated copy's code; it shows nothing, touches nothing and closes the handle."""
+        for code in (0, 38, 40, 41, 2):
+            with self.subTest(code=code):
+                w, n, quit_ = self.run_gate(admin=False, silent=False, uac="accept", elevated=code)
+                self.assertTrue(quit_)
+                self.assertEqual((n.errorlevel, n.boxes, n.log, n.keys, n.ops), (code, [], [], [], []))
+                self.assertEqual((len(w.relaunches), n.mem, w.procs), (1, {}, {}))
+
+    def test_the_struct_asks_for_the_process_handle_and_a_normal_window_uninst2(self):
+        """SHELLEXECUTEINFOW: cbSize 60, fMask 0x540 (NOCLOSEPROCESS 0x40, DDEWAIT 0x100, FLAG_NO_UI 0x400 as ExecShellWait), no parent window
+        in un.onInit, verb runas, no directory, SW_SHOWNORMAL; hProcess is filled in by Windows."""
+        w, n, _ = self.run_gate(admin=False, silent=False, uac="accept")
+        self.assertEqual(w.starts[0][:14], [60, 0x540, 0, "runas", TEMP_COPY, RAISE_PARAMETERS, 0, 1, 0, 0, 0, 0, 0, 0])
+
+    def test_the_elevated_copy_does_the_uninstall_and_its_code_comes_back_uninst2(self):
+        """End to end through the stub: the copy runs in place on the folder and uninstalls (0), or stops at a locked file (40)."""
+        w, n, quit_ = self.run_gate(admin=False, silent=False, uac="accept", elevated=elevated_copy(), files={"program"})
+        self.assertEqual((quit_, n.errorlevel, w.files, n.boxes), (True, 0, set(), []))
+        [copy_] = w.copies
+        self.assertEqual((copy_.v["CMDLINE"], copy_.v["INSTDIR"], copy_.v["EXEPATH"]), (f'"{TEMP_COPY}" /ELEVATED', FOLDER, TEMP_COPY))
+        self.assertEqual((copy_.log, copy_.keys), (["stop", "query", "delete"], [ENTRY]))
+        w, n, quit_ = self.run_gate(admin=False, silent=False, uac="accept", elevated=elevated_copy(),
+                                    files={"program", "uninstall.exe"}, locked={"program"})
+        self.assertEqual((n.errorlevel, w.copies[0].errorlevel, w.copies[0].keys), (40, 40, []))
+
+    def test_an_elevated_copy_without_the_rights_does_not_ask_again_uninst2(self):
+        """No loop: the copy carries /ELEVATED, so even without the rights it does not relaunch; it ends with 38 and its one message, and
+        the first copy, which shows nothing, passes the 38 on."""
+        w, n, quit_ = self.run_gate(admin=False, silent=False, uac="accept", elevated=elevated_copy(admin=False))
+        self.assertEqual((quit_, n.errorlevel, n.boxes, len(w.relaunches)), (True, 38, [], 1))
+        self.assertEqual((w.copies[0].errorlevel, len(w.copies[0].boxes), w.copies[0].log), (38, 1, []))
+
+    def test_a_silent_run_never_asks_uninst2(self):
+        """/S: no prompt even where one would be accepted; 38, no message, nothing touched."""
+        w, n, quit_ = self.run_gate(admin=False, silent=True, uac="accept", args="/S")
+        self.assertEqual((quit_, n.errorlevel, n.boxes, w.relaunches, n.log), (True, 38, [], [], []))
+
+    def test_a_run_marked_elevated_does_not_ask_again_uninst2(self):
+        w, n, quit_ = self.run_gate(admin=False, silent=False, uac="accept", args="/ELEVATED")
+        self.assertEqual((quit_, n.errorlevel, len(n.boxes), w.relaunches), (True, 38, 1, []))
+
+    def test_an_administrator_is_not_relaunched_uninst2(self):
+        for silent in (True, False):
+            with self.subTest(silent=silent):
+                w, n, quit_ = self.run_gate(admin=True, silent=silent, uac="accept")
+                self.assertEqual((quit_, w.relaunches, n.errorlevel), (False, [], 0))
+
+    def test_only_the_marker_and_the_folder_are_handed_over_uninst2(self):
+        """Other words on the command line are not handed on (the uninstaller reads none), and the program path is $EXEPATH, never a part of
+        $CMDLINE; started in place, the installed file itself is started again."""
+        for args in ("/NCRC", '"x" /ELEVATEDX', "/elevated2"):
+            with self.subTest(args=args):
+                w, n, _ = self.run_gate(admin=False, silent=False, args=args)
+                self.assertEqual(w.relaunches, [("runas", TEMP_COPY, RAISE_PARAMETERS)])
+        w, n, _ = self.run_gate(admin=False, silent=False, exedir=FOLDER, exefile="uninstall.exe", cmdline=f'"{FOLDER}\\uninstall.exe" ')
+        self.assertEqual(w.relaunches, [("runas", FOLDER + "\\uninstall.exe", RAISE_PARAMETERS)])
+
+    def test_an_unreadable_exit_code_is_the_footprints_elevated_exit_unknown_uninst2(self):
+        """No process handle, or GetExitCodeProcess fails: 51, the footprint's elevated-exit-unknown, never the copy's possible 0."""
+        want = footprint.load_footprint()["exit_codes"]["elevated-exit-unknown"]
+        self.assertEqual(want, 51)
+        for kw in ({"no_handle": True}, {"exit_unreadable": True}):
+            with self.subTest(**kw):
+                w, n, quit_ = self.run_gate(admin=False, silent=False, uac="accept", elevated=0, **kw)
+                self.assertEqual((quit_, n.errorlevel, n.boxes, n.mem), (True, want, [], {}))
+        self.assertIn("SetErrorLevel 51", body(UNINSTALL, "un.Elevate_Raise"))
+
+    def test_the_new_code_is_distinct_from_every_other_code_uninst2(self):
+        codes = {**json.loads((ROOT / "installer" / "schema.json").read_text())["exit_codes"], **footprint.load_footprint()["exit_codes"]}
+        self.assertEqual([k for k, v in codes.items() if v == 51], ["elevated-exit-unknown"])
+        self.assertNotIn(47, codes.values(), "47 is kept for SL-17a")
+
+    def test_the_relaunch_instructions_are_exactly_the_footprints_and_only_in_un_elevate_raise_uninst2(self):
+        """footprint.py lists every System instruction of un.Elevate_Raise; one changed, or one used in another function, is reported."""
+        lines = [l.strip() for l in body(UNINSTALL, "un.Elevate_Raise").splitlines() if l.strip().startswith("System::")]
+        self.assertEqual(set(lines), footprint.UNINSTALL_RAISE_OPERATIONS)
+        sources = footprint.collect_sources()
+        self.assertEqual(footprint.check_source(sources), [])
+        first = 'w "/ELEVATED _?=$INSTDIR"'
+        for new in ('w "$CMDLINE _?=$INSTDIR"', 'w "/ELEVATED /X _?=$INSTDIR"', 'w "/ELEVATED"'):
+            with self.subTest(new=new):
+                bad = footprint.check_source({**sources, "uninstall.nsh": sources["uninstall.nsh"].replace(first, new)})
+                self.assertEqual(len(bad), 1, bad)
+                self.assertIn("command execution", bad[0])
+        moved = sources["uninstall.nsh"].replace("Function un.Elevate_IsAdmin\n", "Function un.Elevate_IsAdmin\n  System::Free $1\n")
+        self.assertEqual(len(footprint.check_source({**sources, "uninstall.nsh": moved})), 1)
+
+
+def mutant(old, new):
+    assert UNINSTALL.count(old) == 1, old
+    return UNINSTALL.replace(old, new)
+
+
+class Uninst2Mutants(unittest.TestCase):
+    """Each change to un.onInit or un.Elevate_Raise that would break UNINST-2 makes one of the checks above fail."""
+
+    def gate(self, text, **kw):
+        w = World(**{"admin": False, "silent": False, "uac": "accept", **kw})
+        n = Nsis(text, w)
+        n.start("un.onInit")
+        return w, n
+
+    def test_without_the_marker_check_an_elevated_copy_without_rights_loops_uninst2(self):
+        text = mutant('${If} $1 == "/ELEVATED"', '${If} $1 == "/NEVER"')
+        with self.assertRaises(Runaway):
+            self.gate(text, elevated=elevated_copy(text, admin=False))
+        w, n = self.gate(UNINSTALL, elevated=elevated_copy(UNINSTALL, admin=False))
+        self.assertEqual(len(w.relaunches), 1)
+
+    def test_without_the_silent_guard_a_silent_run_asks_uninst2(self):
+        text = mutant("    ${IfNot} ${Silent}\n      Call un.Elevate_Raise\n    ${EndIf}\n", "    Call un.Elevate_Raise\n")
+        self.assertEqual(len(self.gate(text, silent=True)[0].relaunches), 1)
+        self.assertEqual(self.gate(UNINSTALL, silent=True)[0].relaunches, [])
+
+    def test_another_program_path_is_seen_uninst2(self):
+        for new in ('w "$INSTDIR\\uninstall.exe"', 'w "$EXEDIR\\uninstall.exe"'):
+            with self.subTest(new=new):
+                w, _ = self.gate(mutant('w "$EXEPATH"', new))
+                self.assertNotEqual(w.relaunches[0][1], TEMP_COPY)
+
+    def test_without_the_folder_the_copy_returns_at_once_and_its_code_is_lost_uninst2(self):
+        """No _?=: the stub copies itself to %TEMP% again and returns 0 at once, while the real uninstall stops with 40."""
+        text = mutant('w "/ELEVATED _?=$INSTDIR"', 'w "/ELEVATED"')
+        kw = {"files": {"program", "uninstall.exe"}, "locked": {"program"}}
+        self.assertEqual(self.gate(text, elevated=elevated_copy(text), **kw)[1].errorlevel, 0)
+        self.assertEqual(self.gate(UNINSTALL, elevated=elevated_copy(), **kw)[1].errorlevel, 40)
+
+    def test_a_lost_exit_code_is_seen_uninst2(self):
+        """Code 0 written, no wait (STILL_ACTIVE 259 read), no process handle asked for (51), the failed read not checked (0 read)."""
+        for old, new, kw, want in (("SetErrorLevel $3", "SetErrorLevel 0", {"elevated": 40}, 40),
+                                   ("System::Call 'kernel32::WaitForSingleObject(p r2, i -1) i .r0'", "", {"elevated": 40}, 40),
+                                   ("i 0x540", "i 0x500", {"elevated": 40}, 40),
+                                   ("    SetErrorLevel 51\n  ${Else}\n", "  ${Else}\n", {"elevated": 40, "exit_unreadable": True}, 51)):
+            with self.subTest(old=old):
+                self.assertNotEqual(self.gate(mutant(old, new), **kw)[1].errorlevel, want)
+                self.assertEqual(self.gate(UNINSTALL, **kw)[1].errorlevel, want)
+
+    def test_without_the_quit_after_the_handover_the_first_copy_overrides_the_code_uninst2(self):
+        text = mutant("    SetErrorLevel $3\n  ${EndIf}\n  Quit\n", "    SetErrorLevel $3\n  ${EndIf}\n")
+        w, n = self.gate(text, elevated=0)
+        self.assertEqual((n.errorlevel, len(n.boxes)), (38, 1))
+
+    def test_a_missing_close_or_free_is_seen_uninst2(self):
+        w, _ = self.gate(mutant("System::Call 'kernel32::CloseHandle(p r2)'", ""))
+        self.assertNotEqual(w.procs, {})
+        _, n = self.gate(mutant("  System::Free $1\n  System::Call 'kernel32::WaitForSingleObject", "  System::Call 'kernel32::WaitForSingleObject"))
+        self.assertNotEqual(n.mem, {})
 
 
 class Pins(unittest.TestCase):

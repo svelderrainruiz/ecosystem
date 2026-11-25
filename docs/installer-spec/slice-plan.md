@@ -122,7 +122,7 @@ The commander's draft order was: trust chain and build script; input schema and 
 ### SL-6 Update, rollback, repair, uninstall, extension contract
 
 - ARCH: ARCH-8, ARCH-9, ARCH-13
-- Requirements: INST-REQ-011, INST-REQ-037, INST-REQ-038, INST-REQ-039, INST-REQ-040, INST-REQ-041, INST-REQ-042, INST-REQ-043, INST-REQ-044, INST-REQ-045, INST-REQ-081, INST-REQ-082, INST-REQ-083, INST-REQ-084, INST-REQ-095, INST-REQ-096
+- Requirements: INST-REQ-011, INST-REQ-037, INST-REQ-038, INST-REQ-039, INST-REQ-040, INST-REQ-041, INST-REQ-042, INST-REQ-043, INST-REQ-044, INST-REQ-045, INST-REQ-081, INST-REQ-082, INST-REQ-083, INST-REQ-084, INST-REQ-095, INST-REQ-096, INST-REQ-104
 - Depends-on: SL-5
 - Paths: installer/update.py, installer/nsis/update.nsh, installer/nsis/uninstall.nsh, installer/state.schema.json, installer/extension-contract.md, tests/test_installer_update.py, tests/test_installer_uninstall.py
 - Host verification: backup, swap and restore tested on a temporary folder with injected failures at each step; uninstall tested with the network forbidden; the major-version check as a pure function; `pwsh` parse-only checks
