@@ -513,6 +513,10 @@ class UpdateWorld(World):
         # `stuck` names files that cannot be deleted (locked, or in a folder that cannot be listed); `tree_args` is every path pushed to Tree_Remove
         self.links, self.outside, self.stuck, self.tree_args = dict(links or {}), set(outside), set(stuck), []
         self.errorlevel, self.overwrite, self.fh, self.next_handle = None, "on", {}, 0
+        # #335: icacls.exe and the folder probes, for a test that runs the real Winsys_FolderLock (native_Winsys_FolderLock = None). `acl_ops`
+        # records every icacls call and every uninstaller write in order; `grants` maps a file to its explicit entries; `icacls_fail` names
+        # the kinds (lock, setowner, reset, grant) that exit 5.
+        self.acl_ops, self.grants, self.folder_acl, self.icacls_fail = [], {}, None, set()
         self.var.update({"SYSDIR": "C:\\Windows\\System32"})
 
     @property
@@ -705,8 +709,12 @@ class UpdateWorld(World):
                 self.errors = True
                 self.files.pop(path, None)
             else:
+                if path not in self.files:
+                    self.grants.pop(path, None)  # a new file has only the entries it inherits from the folder
+                # CREATE_ALWAYS (exec.c EW_WRITEUNINSTALLER, v310) rewrites an existing file and keeps its DACL
                 self.files[path] = "uninstaller"
                 self.events.append("entry")
+                self.acl_ops.append("write " + path[len(ROOT) + 1:])
         elif op == "writeregstr":
             self.regs[(self.expand(a[1]), self.expand(a[2]))] = self.expand(a[3])
         elif op == "messagebox":
@@ -722,6 +730,10 @@ class UpdateWorld(World):
         return None
 
     def nsexec(self, op, command):
+        if command.startswith('"%s\\icacls.exe" ' % self.var["SYSDIR"]):
+            return self.icacls(command)
+        if command.startswith('"%s\\WindowsPowerShell\\v1.0\\powershell.exe" ' % self.var["SYSDIR"]) and op.endswith("tostack"):
+            return self.folder_probe(command)
         if command.endswith(" info --format {{.OSType}}"):
             # ENGINE-1 mode probe: answered as a failed read, so the update routes go on to the pull as before.
             self.probes.append(command)
@@ -743,6 +755,41 @@ class UpdateWorld(World):
         if op.endswith("tostack"):
             self.stack.append(out)
         self.stack.append(str(rc))
+
+    def icacls(self, command):
+        """icacls.exe as winsys.nsh uses it: the folder lock (/inheritance:r with full control for SYSTEM and Administrators), the children's
+        /setowner and /reset /T (a reset gives every child the folder's ACL only, so it drops their explicit entries), and /grant:r on a file
+        (replaces that SID's explicit entry; a file that is not there exits 2, ERROR_FILE_NOT_FOUND)."""
+        argv = tokens(command)
+        target, verb = argv[1], argv[2]
+        kind = {"/inheritance:r": "lock", "/setowner": "setowner", "/reset": "reset", "/grant:r": "grant"}[verb]
+        self.acl_ops.append("%s %s" % (kind, target[len(ROOT) + 1:] or "folder"))
+        rc = 5 if kind in self.icacls_fail else 0
+        if kind == "grant" and target != ROOT and not self.exists(target):
+            rc = 2
+        if rc == 0:
+            if kind == "lock":
+                self.folder_acl = argv[3:]
+            elif kind == "reset":
+                assert target == ROOT + "\\*" and argv[3:] == ["/T", "/L"], argv
+                self.grants = {f: g for f, g in self.grants.items() if not f.startswith(ROOT + "\\")}
+            elif kind == "grant" and target != ROOT:
+                entries = self.grants.setdefault(target, {})
+                for i in range(3, len(argv), 2):
+                    assert argv[i - 1] == "/grant:r", argv
+                    sid, rights = argv[i].split(":", 1)
+                    entries[sid] = rights
+        self.stack.append(str(rc))
+
+    def folder_probe(self, command):
+        """The two powershell.exe probes of winsys.nsh: the audit (the one with a Queue) answers empty or clean from the file system, the status
+        probe answers from folder_status."""
+        if "Queue" in command:
+            out = "clean" if [f for f in self.under(ROOT) if not f.endswith("\\.dir")] else "empty"
+        else:
+            out = {"abse": "absent", "fres": "fresh", "ours": "ours"}.get(self.folder_status, "foreign")
+        self.acl_ops.append("audit" if "Queue" in command else "status")
+        self.stack += [out + "\r\n", "0"]
 
     def rmdir(self, path):
         self.events.append("rmdir " + path[len(ROOT) + 1:])

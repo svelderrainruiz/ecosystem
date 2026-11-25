@@ -189,8 +189,27 @@ Function Winsys_FolderLock
     ${If} $1 != "clea"
       Call Winsys_FolderRefuse
     ${EndIf}
+    ; The reset gave uninstall.exe the folder's ACL only: its Users entry goes back on (#335), also on a run that ends before the uninstaller is written again.
+    IfFileExists "$APPDATA\EcosystemRunner\uninstall.exe" 0 lock_done
+    Call Winsys_UninstallerGrant
+    lock_done:
   ${EndIf}
   Pop $R9
+FunctionEnd
+
+; #335 (measured on Windows 11): Settings > Apps starts the UninstallString with the user's filtered token, in which Administrators is deny-only, and
+; the folder ACL alone (SYSTEM and Administrators) made Windows refuse to open uninstall.exe before any of our code ran. The file alone gets Users read
+; and execute: explicit, not inherited, no (OI)(CI), no write right. The folder ACL is unchanged and stays closed to standard users; a file opened by its
+; full path needs no right on the folder (standard users hold SeChangeNotifyPrivilege, bypass traverse checking). The owner stays Administrators and
+; Administrators keep the inherited full control, so the elevated uninstaller still deletes the file and the folder. Called after every WriteUninstaller
+; and after every reset of the children (Winsys_FolderReset), which would otherwise drop the entry.
+Function Winsys_UninstallerGrant
+  nsExec::Exec `"$SYSDIR\icacls.exe" "$APPDATA\EcosystemRunner\uninstall.exe" /grant:r *S-1-5-32-545:(RX)`
+  Pop $0
+  ${If} $0 != 0
+    SetErrorLevel 2
+    Abort "uninstall.exe could not be opened to standard users (Settings could not start it): installation stopped."
+  ${EndIf}
 FunctionEnd
 
 ; Install-side service waits (SL-19, INST-REQ-040, 092). The un. copies in uninstall.nsh cannot be called from the installer; the retry and poll numbers
