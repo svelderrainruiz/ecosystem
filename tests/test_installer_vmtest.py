@@ -96,6 +96,8 @@ def reasons(name, seen=()):
 
 
 HELP = {"Page_" + p["id"]: p["help"] for p in json.loads(text_of(INST / "schema.json"))["pages"] if "help" in p}
+# The signer page (INST-REQ-103) is written in trust.nsh, not generated: its help text is its first label there.
+HELP["Page_signer"] = re.search(r'^Function Page_signer\n.*?\$\{NSD_CreateLabel\} 0u 0u 100% 20u "([^"]+)"', text_of(NSIS / "trust.nsh"), re.M | re.S).group(1)
 
 
 def first_field(page):
@@ -775,7 +777,7 @@ class PageNameTests(unittest.TestCase):
         after = self.ORDER[self.ORDER.index("Page_image") + 1]
         self.assertEqual(after, "Page_licences")
         self.assertIn("The %s is not shown after it" % self.phrase(after), dict(STEPS)[10])
-        self.assertEqual(self.ORDER[0], "Page_mode_Pre")
+        self.assertEqual(self.ORDER[:2], ["Page_signer", "Page_mode_Pre"])
         self.assertIn("no %s" % self.phrase("Page_mode"), dict(STEPS)[14])
 
     def test_no_title_that_only_schema_json_holds_is_quoted_and_the_code_sets_no_heading(self):

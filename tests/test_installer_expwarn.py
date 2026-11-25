@@ -58,9 +58,12 @@ def first_window(cmdline="", files=None, answer="IDYES"):
 
 
 def check_the_warning_comes_first_and_changes_no_exit_code(files=None):
-    # T3: no signer. The warning, then the refusal, exit 3 as before.
-    w = first_window(files=files)
+    # T3: a malformed signer. The warning, then the refusal, exit 3 as before.
+    w = first_window("/SIGNER=abc", files=files)
     assert (w.code, w.errorlevel, w.boxes) == ("abort", 3, [WARNING, MISSING]), (w.code, w.errorlevel, w.boxes)
+    # No signer (a double click, INST-REQ-103): the warning, and nothing refused; the signer page asks for the fingerprint.
+    w = first_window(files=files)
+    assert (w.code, w.errorlevel, w.boxes, w.var.get("TrustAsk")) == (None, None, [WARNING], "1"), (w.code, w.errorlevel, w.boxes)
     # T4: a first run. The warning, then the signer box; Yes stores the signer and the run goes on to the pages.
     w = first_window("/SIGNER=" + SIGNER, files=files)
     assert (w.code, len(w.boxes), w.boxes[0]) == (None, 2, WARNING), (w.code, w.boxes)

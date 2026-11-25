@@ -151,7 +151,8 @@ def catalogue():
                    in_labview_version in_mode in_ni_licence_held in_partner_id in_registry_password
                    InstallHandle in_work_dir LicHandle LogBias LogCommand LogD LogExistingOnly LogExit LogH
                    LogHandle LogMi LogMo LogPath LogS LogStepName LogT1 LogT2 LogT3 LogT4 LogY LogZone
-                   MachineFolder runner_mode tree_depth TrustSigner TrustStored TrustStoreFile unelev_isadmin
+                   MachineFolder runner_mode tree_depth TrustAsk TrustSigner TrustStored TrustStoreFile TrustText
+                   TrustTyped unelev_isadmin
                    upd_a0 upd_a1 upd_a2 upd_acc upd_b0 upd_b1 upd_b2 upd_c upd_code upd_fhas upd_fval upd_h
                    upd_hay upd_i upd_json upd_k upd_line upd_mode upd_msg upd_n upd_needle upd_ok upd_old
                    upd_online upd_parts upd_pos upd_svc upd_t upd_ver vs_c vs_kind vs_name winsys_code

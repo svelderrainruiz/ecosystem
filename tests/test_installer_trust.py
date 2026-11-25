@@ -206,7 +206,7 @@ class TestNsis(unittest.TestCase):
         boxes = [ln for ln in nsh.splitlines() if ln.strip().startswith("MessageBox MB_YESNO")]
         self.assertEqual(len(boxes), 2)
         self.assertTrue(all("MB_DEFBUTTON2" in ln for ln in boxes), "Enter must never accept a fingerprint")
-        self.assertEqual(nsh.count("Call TrustCanonicalHex64"), 2)
+        self.assertEqual(nsh.count("Call TrustCanonicalHex64"), 3)  # the /SIGNER= value, the stored file, the signer page (INST-REQ-103)
         self.assertIn("TrustStoreBad", nsh)  # an existing but damaged stored file is refused, not a first run
         self.assertEqual(nsh.count("IfErrors TrustWriteBad"), 2)
         self.assertIn('"$TrustStoreFile" r\n  IfErrors TrustStoreBad', nsh)  # unreadable existing file is refused

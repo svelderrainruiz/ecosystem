@@ -85,8 +85,9 @@ class InitOrder(unittest.TestCase):
         self.assertEqual(first, ["!insertmacro RefuseLongCommandLine", "!insertmacro RefuseSecretOptions"])
 
     def test_the_mode_page_is_the_first_page_and_has_its_leave_callback(self):
+        # INST-REQ-103: only the signer page, shown only to a window started without /SIGNER=, comes before it.
         pages = [l for l in MAIN.splitlines() if l.startswith("Page ")]
-        self.assertEqual(pages[0], "Page custom Page_mode_Pre Page_mode_Leave")
+        self.assertEqual(pages[:2], ["Page custom Page_signer Page_signer_Leave", "Page custom Page_mode_Pre Page_mode_Leave"])
 
     def test_every_message_box_added_is_silent_safe_034(self):
         for text in (func(SCREENS, "Page_mode_Leave"), *(p.read_text(encoding="utf-8") for p in NSIS.glob("runner-*.nsh"))):

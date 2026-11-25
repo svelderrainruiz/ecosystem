@@ -74,7 +74,8 @@ FunctionEnd
 
 ; The single place that raises rights. Replace this function only if the elevation approach is redesigned.
 ; The relaunch gets ONE parameter string, built here and nowhere else (the program path is not copied from $CMDLINE: it would reach the child a second time). In this order:
-;   /NCRC and /SIGNER=, the only two of the parent's own words the child needs (/D= is cut out of the command line by NSIS before any script sees it, and the child checks the signer itself); an unknown or
+;   /NCRC and /SIGNER=, the only two of the parent's own words the child needs (/D= is cut out of the command line by NSIS before any script sees it, and the child checks the signer itself;
+;   a parent started without /SIGNER= hands over the fingerprint typed on its signer page, INST-REQ-103); an unknown or
 ;   bad word typed on the parent's command line is dropped, so it cannot end the child with exit 30 or 31 after the prompt; /NCRC is first because the NSIS stub reads it blank by blank and an
 ;   answer that ends in a blank leaves a lone quote that hides every later word from it; then /ELEVATED, then the answers (Carry_Answers), the non-secret ones that are not blank.
 ; Nothing is handed over when an answer cannot be carried: the page stays and a message names it (issue 117). Only a successful hand-over quits. ExecShell sets the error flag when the user
@@ -92,6 +93,10 @@ Function Elevate_Raise
   Push "/SIGNER="
   Call Cmdline_Get
   Pop $0
+  ; a window started without /SIGNER= hands over the fingerprint its signer page checked (64 lowercase hex digits)
+  ${If} $0 == ""
+    StrCpy $0 $TrustSigner
+  ${EndIf}
   ${If} $0 != ""
     Push "The signer fingerprint"
     Push "/SIGNER="
