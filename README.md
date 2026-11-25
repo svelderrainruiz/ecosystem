@@ -69,6 +69,7 @@ On Linux, from a clean checkout of this repository, with Git, a container engine
 `installer/pins.json`):
 
 ```
+export PYTHONDONTWRITEBYTECODE=1
 python3 -m installer.build check
 c=$(git rev-parse HEAD | cut -c1-12)
 python3 -m installer.guest.vmkit build --out ~/vm-kit/$c --payload ~/vm-kit/stand-in-payload.txt
@@ -76,7 +77,8 @@ python3 -m installer.guest.vmkit verify ~/vm-kit/$c
 ```
 
 The payload is any stand-in file outside the checkout; the build refuses a dirty checkout and a kit folder whose name
-is not the first 12 hex digits of `HEAD`. `installer/README.md` has the details.
+is not the first 12 hex digits of `HEAD`. `PYTHONDONTWRITEBYTECODE=1` keeps Python cache files out of `installer/`, whose
+file list is a build input. `installer/README.md` has the details.
 
 A kit built on Linux compiles with the distribution's makensis 3.10; one built on Windows uses the pinned
 NSIS 3.10 ZIP. So the same commit gives different hashes on the two systems; each release states where it
