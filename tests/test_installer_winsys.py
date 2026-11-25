@@ -379,7 +379,7 @@ class ReviewFixTests(unittest.TestCase):
     def test_footprint_commands_match_the_adapter_and_service_is_deleted_once(self):
         fp = footprint.load_footprint()
         entries = [e for e in fp["exec_allowed"] if e["file"] == "winsys.nsh"]
-        self.assertEqual({e["function"] for e in entries}, {"Winsys_CreateService", "Winsys_Cleanup", "Winsys_FolderStatus", "Winsys_FolderAudit", "Winsys_FolderReset", "Winsys_FolderLock", "Winsys_QueryState", "Winsys_StopAndWait", "Winsys_StartAndWait"})
+        self.assertEqual({e["function"] for e in entries}, {"Winsys_CreateService", "Winsys_Cleanup", "Winsys_FolderStatus", "Winsys_FolderAudit", "Winsys_FolderReset", "Winsys_FolderLock", "Winsys_UninstallerGrant", "Winsys_QueryState", "Winsys_StopAndWait", "Winsys_StartAndWait"})
         text = self.NSH.read_text(encoding="utf-8")
         self.assertNotIn("Function Winsys_DeleteService", text)
         for e in entries:

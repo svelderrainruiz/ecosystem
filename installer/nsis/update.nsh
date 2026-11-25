@@ -537,6 +537,7 @@ Function Update_WriteEntry
   IfErrors 0 uninstaller_ready
   Call Install_UninstallerFailed
   uninstaller_ready:
+  Call Winsys_UninstallerGrant
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\EcosystemRunner" "DisplayName" "Ecosystem Runner"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\EcosystemRunner" "DisplayVersion" "${INSTALLER_VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\EcosystemRunner" "UninstallString" '"$APPDATA\EcosystemRunner\uninstall.exe"'

@@ -140,6 +140,13 @@
       "commands": [
         "\"$SYSDIR\\icacls.exe\" \"$APPDATA\\EcosystemRunner\" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F /grant:r *S-1-5-32-544:(OI)(CI)F"
       ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_UninstallerGrant",
+      "commands": [
+        "\"$SYSDIR\\icacls.exe\" \"$APPDATA\\EcosystemRunner\\uninstall.exe\" /grant:r *S-1-5-32-545:(RX)"
+      ]
     }
   ],
   "elevated_markers": [
