@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "silent": {
+    "flag": "/S",
+    "prefix": "/"
+  },
+  "pages": [
+    {"id": "mode", "title": "What this PC does"},
+    {"id": "folders", "title": "Folders"},
+    {"id": "forge", "title": "Forge addresses and allow-lists"},
+    {"id": "network", "title": "Proxy and DNS"},
+    {"id": "labview", "title": "LabVIEW"},
+    {"id": "image", "title": "NI docker image"},
+    {"id": "licences", "title": "Licence conditions", "only_when": "image_chosen"},
+    {"id": "secrets", "title": "Add secrets", "interactive_only": true, "repeatable": true}
+  ],
+  "inputs": [
+    {"id": "mode", "label": "What this PC does", "kind": "choice", "page": "mode", "choices": ["local", "github", "gitlab"], "choice_labels": {"local": "Local only (no forge)", "github": "GitHub runner", "gitlab": "GitLab runner"}, "setter": "Runner_Set", "req": ["INST-REQ-020", "INST-REQ-034", "INST-REQ-035", "INST-REQ-036"]},
+    {"id": "install_dir", "label": "Install folder", "kind": "path", "required": true, "page": "folders", "req": ["INST-REQ-021"]},
+    {"id": "work_dir", "label": "Work folder", "kind": "path", "page": "folders", "req": ["INST-REQ-021"]},
+    {"id": "github_url", "label": "GitHub address", "kind": "url", "https_only": true, "page": "forge", "req": ["INST-REQ-021"]},
+    {"id": "gitlab_url", "label": "GitLab address", "kind": "url", "https_only": true, "page": "forge", "req": ["INST-REQ-021"]},
+    {"id": "partner_id", "label": "Partner or organisation ID", "kind": "text", "page": "forge", "req": ["INST-REQ-021"]},
+    {"id": "allow_list", "label": "Allow-list (comma separated)", "kind": "list", "page": "forge", "req": ["INST-REQ-021"]},
+    {"id": "http_proxy", "label": "Proxy address", "kind": "url", "page": "network", "req": ["INST-REQ-021"]},
+    {"id": "dns_servers", "label": "DNS servers (comma separated)", "kind": "list", "page": "network", "req": ["INST-REQ-021"]},
+    {"id": "labview_version", "label": "LabVIEW version", "kind": "text", "page": "labview", "req": ["INST-REQ-021"]},
+    {"id": "image_variant", "label": "NI docker image container type", "kind": "choice", "page": "image", "choices": ["windows", "linux"], "req": ["INST-REQ-021", "INST-REQ-022"]},
+    {"id": "image_year", "label": "NI docker image year", "kind": "choice", "page": "image", "choices": ["2024", "2025"], "req": ["INST-REQ-021", "INST-REQ-022"]},
+    {"id": "ni_licence_held", "label": "Yes, we hold a development licence (NI licence conditions)", "kind": "licence", "page": "licences", "req": ["INST-REQ-018", "INST-REQ-073"]},
+    {"id": "engine_licence_accepted", "label": "Yes, we accept the container engine licence conditions", "kind": "licence", "page": "licences", "req": ["INST-REQ-018", "INST-REQ-073"]},
+    {"id": "github_token", "label": "GitHub registration token", "kind": "secret", "no_blank": true, "page": "secrets", "req": ["INST-REQ-076"]},
+    {"id": "gitlab_token", "label": "GitLab runner token", "kind": "secret", "no_blank": true, "page": "secrets", "req": ["INST-REQ-076"]},
+    {"id": "registry_password", "label": "Image registry password", "kind": "secret", "no_blank": true, "page": "secrets", "req": ["INST-REQ-076"]}
+  ],
+  "secrets_step": {
+    "interactive_only": true,
+    "repeatable": true,
+    "key_scope": "per-pc",
+    "on_repeat": "replace"
+  },
+  "secret_refusal": {
+    "name_pattern": "TOKEN|SECRET|PASSW|PASSPHRASE|KEY|CREDENTIAL",
+    "file_or_stdin_options": ["SECRETFILE", "SECRETS", "SECRETSTDIN", "STDIN"]
+  },
+  "exit_codes": {
+    "ok": 0,
+    "folder-descriptor-failed": 2,
+    "bad-value": 30,
+    "unknown-key": 31,
+    "secret-on-command-line": 32,
+    "secret-from-file-or-stdin": 33,
+    "edition-refused": 34,
+    "licence-not-accepted": 35,
+    "image-not-pinned": 36,
+    "state-not-writable": 37,
+    "folder-not-ours": 39,
+    "image-pull-failed": 46,
+    "cmdline-too-long": 50
+  },
+  "editions": {
+    "accepted_exact": ["Windows 11 Pro", "Windows 11 Enterprise"],
+    "accepted_prefix": ["Windows Server 2022", "Windows Server 2025"]
+  },
+  "images": {
+    "note": "Pinned at build time. A null repository or digest is not yet recorded and is refused with a typed error; it is never asked of the user.",
+    "list": [
+      {"variant": "windows", "year": "2024", "digest": null, "repository": null},
+      {"variant": "linux", "year": "2024", "digest": null, "repository": null},
+      {"variant": "linux", "year": "2025", "digest": null, "repository": null}
+    ]
+  }
+}

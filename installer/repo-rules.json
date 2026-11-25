@@ -1,0 +1,10 @@
+{
+ "schema_version": 1,
+ "repository": "svelderrainruiz/ecosystem-control",
+ "branch": "main",
+ "code_owner": "svelderrainruiz",
+ "pull_request_required": true,
+ "code_owner_review_required": true,
+ "fork_pull_request_on_self_hosted_runner": false,
+ "requirements": ["INST-REQ-101"]
+}

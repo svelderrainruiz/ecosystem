@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Installer: build test kit",
+      "detail": "Builds and verifies a test installer kit from origin/<branch> on this Windows PC (tools/build-windows.ps1, installer/BUILD-WINDOWS.md). Installs nothing and never starts installer.exe.",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tools\\build-windows.ps1",
+        "-Branch",
+        "${input:installerBranch}"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "installerBranch",
+      "type": "promptString",
+      "description": "Branch to build from origin (Enter for develop)",
+      "default": "develop"
+    }
+  ]
+}

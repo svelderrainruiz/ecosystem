@@ -1,0 +1,9 @@
+# Diagnostics allow-list (INST-REQ-048/049). One field name per line; every change needs the operator's review.
+# Only these fields can enter the diagnostics zip; values are also checked for paths, URLs, names and variables.
+version
+windows_edition
+service_state
+exit_codes
+timings
+error_codes
+folder_sizes

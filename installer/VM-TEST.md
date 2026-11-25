@@ -1,0 +1,124 @@
+# Windows VM test kit for the interactive installer
+
+Test in a Windows VM you can throw away. The VM needs no internet. From your host, file an **Installer test run** issue using the build task's `Report your run:` link or **Issues > New issue > Installer test run**. See [How to report](#how-to-report) for the step lines.
+
+A step ends with a tag: READ (expected from the code, never seen on Windows yet) or MEASURED (a guest run already showed it; the guest case is named). NOT KNOWN means nobody can say yet: report what you see. The code sets no heading on its pages, so each page is named by its first field. Quoted texts are copied from the installer; `(src: <file> <name>)` says which file, and which function or key in it, to read them from.
+
+Two things Windows does on its own, not installer code (nothing ties them to the source): a file copied from the host carries the Mark of the Web, so starting `installer.exe` may show a blue box `Windows protected your PC` (SmartScreen: choose `More info`, then `Run anyway`) or a box `Open File - Security Warning` (choose `Run`); report the wording if it differs, or run `Get-ChildItem C:\kit | Unblock-File` once to avoid both. Windows 11 also blocks an unsigned script by default, so every report run below passes `-ExecutionPolicy Bypass`, which lifts that for that one run only.
+
+## Part A: install, local only
+
+- **T1** Use a Windows 11 Pro or Enterprise x64 VM (the host check accepts those and Windows Server 2022 and 2025; the installer itself does not check the edition). Take a snapshot named `before`. Copy this kit to `C:\kit`, open PowerShell as administrator, `cd C:\kit` and run `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T1`. See: `elevated: yes`; the folder, the service, both uninstall-key views and the per-user signer file all `absent`. READ (src: footprint.json folder) (src: schema.json editions)
+- **T2** Check the files: `Get-Content .\SHA256SUMS | ForEach-Object { $h, $n = $_ -split '\s+\*?', 2; '{0} {1}' -f $n, ((Get-FileHash -LiteralPath $n).Hash -eq $h) }`. See: `True` after each of the three names. READ
+- **T3** (optional) Start with no signer: `$p = Start-Process .\installer.exe -Wait -PassThru; $p.ExitCode`. See: a box with "The signer fingerprint is missing or malformed. Start the installer with /SIGNER= and the 64 hex digits of the published fingerprint." and "Nothing was started.", then exit 3. A double-click does the same. READ (src: trust.nsh TrustRefuse)
+- **T4** Start it for real. The signer below is a made-up placeholder, not the fingerprint of anything: `$sig = 'ab' * 32; $p = Start-Process .\installer.exe -ArgumentList "/SIGNER=$sig" -Wait -PassThru`. See: a Yes/No box "First run. The signer fingerprint is:" with the 64 characters and "Does it match the fingerprints published in the two independent places?", No preselected. Click Yes. READ (src: trust.nsh TrustCheck)
+- **T5** The page whose first field is "Local only (no forge)" (a radio button; "GitHub runner" and "GitLab runner" follow it). The code preselects none; whether Windows shows one is NOT KNOWN: report it. Select Next with none chosen (skip this if one is chosen). See: a box "Choose what this PC does, then select Next." Then choose "Local only (no forge)" and never the other two: this kit holds a stand-in file, not a runner. READ (src: screens.nsh Page_mode_Leave)
+- **T6** The page whose first field is "Install folder" ("Work folder" follows it). Type `C:\a"b` in "Install folder" and select Next. See: "Install folder: must not contain a double quote." Clear it and select Next with both boxes empty: no message, an empty box is not checked. READ (src: screens.nsh Page_folders_Leave)
+- **T7** The page whose first field is "GitHub address" ("GitLab address", "Partner or organisation ID" and "Allow-list (comma separated)" follow it). Type `http://x` in "GitHub address". See: "GitHub address: must start with https://." Clear it, type `a,,b` in "Allow-list (comma separated)". See: "Allow-list (comma separated): is a comma separated list with an empty item." (the wording is the code's). Clear it, Next. READ (src: screens.nsh Page_forge_Leave)
+- **T8** The page whose first field is "Proxy address" ("DNS servers (comma separated)" follows it). Type `ftp://x` in "Proxy address". See: "Proxy address: must start with http:// or https://." Clear it, Next. READ (src: screens.nsh Page_network_Leave)
+- **T9** The page whose first field is "LabVIEW version" (its only box). Leave it empty, Next: no message. READ (src: screens.nsh Page_labview_Leave)
+- **T10** The page whose first field is "NI docker image container type" ("NI docker image year" follows it; both are plain text boxes). The container type is `windows` OR `linux`, never both (INST-REQ-022). Type `x` in "NI docker image container type". See: "NI docker image container type: must be one of windows, linux." Container type `windows` alone: "Choose both the NI docker image container type and year, or neither." Container type `windows` with year `2025`: "This NI docker image container type and year are not in the pinned list." Clear both, Next. The page whose first field is "Yes, we hold a development licence (NI licence conditions)" is not shown after it, because this page refuses every pick; if it is shown, report it. READ (src: screens.nsh Page_image_Leave)
+- **T11** The page whose first field is "GitHub registration token" ("GitLab runner token" and "Image registry password" follow it; all three are masked boxes). Type the fake value `dummy token` (with a space) in "GitHub registration token". See: "GitHub registration token: must not hold a space, quote, backslash or control character." Clear it, leave all three empty, Next. Never type a real secret. READ (src: screens.nsh Page_secrets_Leave)
+- **T12** The install page runs. Its texts are NOT KNOWN (the installer sets none of its own): report the heading and the last line. When it ends, run `$p.ExitCode`: it prints 0. A write that fails ends the run with a box instead; neither is expected: "The uninstaller could not be written. The uninstall entry was not updated." with exit 48, or "The state file could not be written. See the step log for the file name." with exit 49. Report the box, the exit, and the `command` value of the last line of `C:\ProgramData\EcosystemRunner\steps.jsonl` (it names the file) if that file exists. READ (src: install.nsh Install_Footprint) (src: install.nsh Install_UninstallerFailed) (src: install.nsh Install_StateFailed)
+- **T13** Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T13`. See: folder present, `is a link: no`, access `Administrators, SYSTEM`, inheritance removed `yes`; `installer-state.json: present, 53 bytes`; `runner-mode.json: present, 19 bytes`; `uninstall.exe: present` with a size; `runner-forge.json`, `licence-record.json`, `steps.jsonl`, `program` and `backup` all `absent`; `other entries in the folder: 0`; the per-user signer file `present, 65 bytes`; service `absent`; the uninstall key present in the Registry64 view only, values `DisplayName, DisplayVersion, QuietUninstallString, UninstallString`, `DisplayName: Ecosystem Runner`, `DisplayVersion: 0.1.0`, both string lines `yes`. MEASURED for the presence of the folder, installer-state.json, uninstall.exe, the key with its four values, the signer file and no service (guest case SL-4b-footprint, #64, a silent install without runner-mode.json); READ for the sizes, the access names, runner-mode.json and the 32-bit view (src: install.nsh Install_Footprint)
+
+## Part B: repair, Apps & Features, uninstall
+
+- **T14** Run T4 again, same prompt, same `$sig`. See: no signer box (the same signer is not asked again); no page whose first field is "Local only (no forge)" (a second run of the same version is a repair, which skips only that page); every other page shows, so select Next through them without typing. READ (src: update.nsh Page_mode_Pre)
+- **T15** Run `$p.ExitCode`: it prints 0 (a failed write ends it as in T12). `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T15` shows what T13 showed, except `installer-state.json: present, 52 bytes` (a repair writes the file again with the keys in alphabetical order and a bare line feed, one byte less). READ (src: update.nsh Update_WriteState) (src: update.nsh Update_WriteEntry)
+- **T16** Open Settings, Apps, Installed apps. See: "Ecosystem Runner" with version 0.1.0 (the entry is machine-wide). Do not click Uninstall yet. READ (src: install.nsh Install_Footprint)
+- **T17** Click Uninstall on that entry. NOT KNOWN: Settings starts the uninstaller without administrator rights and the folder is locked to administrators, so Windows may refuse before the installer shows its own box "Uninstalling needs administrator rights. Start the uninstall as an administrator." Report everything you see; the entry must still be listed afterwards. READ for that box (src: uninstall.nsh un.onInit)
+- **T18** From the elevated prompt, uninstall by hand: `& 'C:\ProgramData\EcosystemRunner\uninstall.exe'`. See: the uninstaller window (its texts are NOT KNOWN: report them) and a box "Still to do at the forge: delete this runner by hand at the place listed in the uninstall report." although no forge was used. The command returns about a second after it starts, before the work is done: run `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T18` until the folder reads `absent`. READ for the box (src: uninstall.nsh un.Uninstall_ForgeNote); MEASURED for the early return (guest case SL-6a-offline-uninstall, #64)
+- **T19** Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T19`. See: the folder, the service and the key in both views `absent`; the per-user signer file still `present, 65 bytes`, kept on purpose. MEASURED (guest case SL-6a-offline-uninstall, #64: folder, 64-bit key and service removed, signer file kept)
+- **T20** (optional, the quiet path) Run T4 again for a fresh install (the signer is stored, so no box; choose "Local only (no forge)" again), then `& 'C:\ProgramData\EcosystemRunner\uninstall.exe' /S` and `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T20` until all is `absent` as in T19. No box is shown. MEASURED (guest case SL-6a-offline-uninstall, #64)
+- **T21** (optional, the refusal) Start as T4 from a normal PowerShell, not as administrator, with nothing installed (the state after T19); the signer is stored, so no box. Choose "Local only (no forge)", Next. Type `C:\a /b` in "Install folder" (the page accepts it), Next, and select Next through the other pages without typing, "The runner needs administrator rights, and this PC session does not have them. Only the per-user mode is offered." among them, up to "The next step needs administrator rights. It changes exactly these things and nothing else:". Select Next. See: a box "These answers cannot be handed to the administrator step, so it was NOT started: Install folder. Choose Back, change or shorten them, then choose Next." and no Windows prompt; the page stays. The answer holds a blank and a slash, which the elevated copy could not read back, so the first window refuses it. Cancel. READ (src: elevate.nsh Elevate_Raise) (src: elevate.nsh Carry_One) (src: screens.nsh Carry_Answers)
+- **T22** (optional, the hand-over) Start as T4 again from a normal PowerShell, still with nothing installed. Choose "Local only (no forge)", type nothing and select Next through every page up to "The next step needs administrator rights. It changes exactly these things and nothing else:". Its Folder line is expected to show `C:\ProgramData\EcosystemRunner`, the machine folder (the code reads it with the all-users location, so it is not a Roaming path): report `Folder line is the machine folder: yes` or `Folder line is the machine folder: no`, and if no, never the path itself. Select Next and decline the Windows prompt. See: "The installation needs administrator rights and has NOT started. Choose Next to see the Windows administrator prompt again, or Cancel to leave." Select OK, then Next again and accept the prompt. See: the first window closes and a second one opens at the page whose first field is "GitHub registration token" (the three empty boxes of T11) with the Back button greyed out; the pages from the page whose first field is "Local only (no forge)" to the page whose first field is "NI docker image container type" are not shown again, because the first window handed those answers over (no secret is ever handed over). If another page comes first, or the Yes/No box "First run. The signer fingerprint is:" shows again, report it. Select Next and let the install run, then from the elevated prompt run `powershell -NoProfile -ExecutionPolicy Bypass -File .\vm-state.ps1 -Step T22`: it shows what T13 showed, `runner-mode.json: present, 19 bytes` included (the mode crossed the prompt). READ (src: elevate.nsh Page_elevation) (src: elevate.nsh Carried_Detect) (src: screens.nsh Page_secrets)
+- **T23** Restore the snapshot `before`. READ
+
+---
+
+## Part C: the ten command lines
+
+These are the ten lines of the README table `Not verified on Windows` (#121): each runs the installer silently and names the exit the table expects. Start from `C:\kit`, in any PowerShell. No `/SIGNER` is given on purpose: a line the reader refuses ends with the exit in the table, and a line the reader accepts is stopped by the trust check with exit 3 before anything is installed, so nothing can be installed here (READ: src: main.nsi .onInit; src: trust.nsh TrustCheck). The table says 0 for an accepted line, which is the model's answer for the reader alone, so the block counts exit 3 as 0. Row 8 runs twice and expects 31 both times: C8 goes through `cmd /c`, which adds a second blank after `s`, and C8d starts `s.exe` directly with the exact line `s /FOO /S`, one blank after `s`. That one-blank start is the one `${GetParameters}` got wrong before #136 (exit 3 in REPORT L3), so 3 on C8d would mean `/FOO` was dropped; C8d compares its exit as it is with 31, without counting 3 as 0. For C8d the block compiles a small launcher with `Add-Type` that calls CreateProcessW, because `ProcessStartInfo` always puts the program name in double quotes. Rows 9 and 10 are NSIS limits measured on Windows 11 build 26300 (REPORT L2, C9 and C10): row 9 expects 0 because NSIS removes ` /D=` and everything after it, so 31 there would mean the installer saw `/FOO`; row 10 expects 50 because `$CMDLINE` is cut at 1023 characters and the cut line is refused. Report the eleven lines as the block prints them: C1 to C10, then C8d.
+
+```powershell
+Copy-Item .\installer.exe .\s.exe      # row 8 needs a program called s, started by CreateProcess and not by start
+$rows = @(
+  @(1,  'P /GITHUB_URL=https://github.com/o/r', 0),
+  @(2,  'P /PARTNER_ID="abc /GITHUB_TOKEN=x', 32),
+  @(3,  'P /PARTNER_ID="abc', 30),
+  @(4,  'P "-"', 33),
+  @(5,  'P /INSTALL_DIR="C:\a b"', 0),
+  @(6,  'P /INSTALL_DIR="C:\a /KEYS"', 32),
+  @(7,  'P /PARTNER_ID=""', 30),
+  @(8,  's /FOO /S', 31),
+  @(9,  'P /D=C:\X /FOO', 0),
+  @(10, 'P /PARTNER_ID=<1000 x> /FOO', 50)
+)
+foreach ($r in $rows) {
+    $first, $rest = $r[1] -split ' ', 2
+    $i = New-Object System.Diagnostics.ProcessStartInfo
+    $i.WorkingDirectory = (Get-Location).Path
+    $i.UseShellExecute = $false
+    if ($first -eq 'P') { $i.FileName = (Resolve-Path .\installer.exe).Path; $i.Arguments = '/S /MODE=github ' + $rest }
+    else { $i.FileName = $env:ComSpec; $i.Arguments = '/c ' + $r[1] }
+    $i.Arguments = $i.Arguments.Replace('<1000 x>', 'x' * 1000)
+    $q = [System.Diagnostics.Process]::Start($i)
+    $q.WaitForExit()
+    $rc = $q.ExitCode
+    if ($rc -eq 3) { $seen = 0 } else { $seen = $rc }
+    if ($seen -eq $r[2]) { 'C{0} ok' -f $r[0] } else { 'C{0} saw: {1}' -f $r[0], $rc }
+}
+Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices; using System.Text;
+public static class KitDirect {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  struct SI { public int cb; public string r; public string d; public string t; public int x, y, xs, ys, xc, yc, fa, fl; public short sw, cb2; public IntPtr r2, hi, ho, he; }
+  [StructLayout(LayoutKind.Sequential)]
+  struct PI { public IntPtr hp, ht; public int pid, tid; }
+  [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+  static extern bool CreateProcessW(string app, StringBuilder cmd, IntPtr pa, IntPtr ta, bool inherit, uint flags, IntPtr env, string dir, ref SI si, out PI pi);
+  [DllImport("kernel32.dll")] static extern uint WaitForSingleObject(IntPtr h, uint ms);
+  [DllImport("kernel32.dll")] static extern bool GetExitCodeProcess(IntPtr h, out uint code);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  public static int Run(string app, string line, string dir) {
+    SI si = new SI(); si.cb = Marshal.SizeOf(typeof(SI)); PI pi; uint c;
+    if (!CreateProcessW(app, new StringBuilder(line), IntPtr.Zero, IntPtr.Zero, false, 0, IntPtr.Zero, dir, ref si, out pi)) return -1;
+    WaitForSingleObject(pi.hp, 0xFFFFFFFF); GetExitCodeProcess(pi.hp, out c);
+    CloseHandle(pi.ht); CloseHandle(pi.hp); return (int)c;
+  }
+}
+'@
+$r = $rows[7]                          # C8d: row 8 started directly, its line exactly as shown, one blank after s
+$rc = [KitDirect]::Run((Resolve-Path .\s.exe).Path, $r[1], (Get-Location).Path)
+if ($rc -eq $r[2]) { 'C8d ok' } else { 'C8d saw: {0}' -f $rc }
+Remove-Item .\s.exe
+```
+
+READ for rows 1 to 8; C8d is the direct start that REPORT L3 measured with the installer before #136 (exit 3, `/FOO` dropped), and a launch that fails prints `C8d saw: -1`. Rows 9 and 10 are the NSIS limits measured in REPORT L2 (C9, C10), and this block has not yet been run on Windows with the exit-50 installer. The refusals 30 to 33 come from the reader before any step. A refusal may append one line to `C:\ProgramData\EcosystemRunner\steps.jsonl`, only if that file already exists; on a fresh VM it does not. (src: screens.nsh Silent_Bad) (src: log.nsh LogStep)
+
+## Part D: Docker container type probe
+
+- **T24** Use a build with reachable, pinned image choices for both container types; an unpinned choice cannot reach the pull. In Docker Desktop, note its client version, switch to Windows containers with `& "$env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchDaemon` if needed, and wait until the engine is ready. Take a clean snapshot, install with the pinned Windows container choice, then restore and install with the pinned Linux container choice; accept both licence boxes in each run. The Windows choice must pull; the Linux choice must show a refusal box identifying Windows as the active container type and Linux as required, with instructions to switch Docker to Linux and rerun to repair, then exit 46. Switch to Linux containers with the same command, wait until the engine is ready, take a clean snapshot, and run both choices the same way: the Linux choice must pull; the Windows choice must show the equivalent refusal for Linux active and Windows required, then exit 46. For each run, separately invoke the exact probe on Docker Desktop's fixed executable, `& "$env:ProgramFiles\Docker\Docker\resources\bin\docker.exe" info --format '{{.OSType}}'`, and capture stdout bytes to record the probe exit code, exact output and whether it ends in CR LF, LF or nothing. Also record the Docker Desktop client version, daemon mode, chosen container type and year, whether a pull occurred, the exact box text if shown, and the installer exit code. Real-engine parser evidence in the #177 comment: Docker Desktop client 29.9.3 in Windows containers mode returned probe exit 0 and output `windows` (8 characters) ending LF, not CR LF. READ for the four outcomes.
+
+## How to report
+
+In the **Installer test run** issue form, put one line per step in **Step lines**: `T4 ok`, or `T7 saw: <up to 80 characters>`; for part C the block prints the line. A step with several parts: report the first part that differs. Screenshots stay in the VM. Type only obviously fake values (`dummy-token`), never a real secret, and never paste a path that holds a user name. Metadata only: no file contents, no host or user names.
+
+The report script ends with a status: 0 when every read worked, 1 when a read failed (an error, or the access list of the folder could not be read). `$LASTEXITCODE` shows it after the run line, and the last line says the same: `end of report: every read worked, status 0` or `end of report: a read failed, status 1`. A WARNING line (not elevated) does not change the status; the line for a failed read names only the kind of error, never its text.
+
+## How this kit was built
+
+The stand-in file is any small text file kept outside Git. It is not a runner, so never choose GitHub or GitLab in this kit: a service mode would try to start it. The build prints `TEST BUILD: the runner payload is not pinned; this installer is not a release`. The version is the default 0.1.0, so a second run is a repair; an update needs a newer installer and is not in this kit. `SHA256SUMS` is the output of `sha256sum installer.exe VM-TEST.md vm-state.ps1`. No binary is in Git (INST-REQ-005).
+
+## Rebuild the kit
+
+Run this in a clean checkout of the commit to build, again after any change to the installer or to this kit. The kit folder is named by the first 12 hex digits of that commit, and its copy of this file ends with `built from: <the 40 hex digits>`:
+
+```bash
+python3 -m installer.guest.vmkit build --out ~/work/vm-kit/$(git rev-parse HEAD | cut -c1-12) --payload ~/work/vm-kit/stand-in-payload.txt
+```
+
+The generator uses `--test-build`, copies `VM-TEST.md` and `vm-state.ps1` unchanged except for the final commit line, and writes `SHA256SUMS` in the order `installer.exe`, `VM-TEST.md`, `vm-state.ps1`. It refuses a dirty checkout, a non-empty output folder or a folder name that does not match HEAD. Use `--repo <path>` to build a different clean checkout (default: `.`).
+
+Run `python3 -m installer.guest.vmkit verify <dir>` before using or sending a kit. It checks every hash, the exact file set and the final commit line against the folder name. Never edit a generated kit; rebuild it.

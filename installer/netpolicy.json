@@ -1,0 +1,9 @@
+{
+ "upload": false,
+ "allowed": [
+  {"id": "nsis-source", "host": "downloads.sourceforge.net"},
+  {"id": "user-forge", "host": "$USER_FORGE"},
+  {"id": "vendor-registry", "host": "$PINNED_REGISTRY"}
+ ],
+ "forbidden_forge_names": ["github.com", "gitlab.com", "svelderrainruiz", "ecosystem-ops", "VITechnologies"]
+}
