@@ -59,8 +59,13 @@ python3 -m unittest discover -s tests -t . -v
 ```
 
 The tests under `tests/test_installer_guest_*.py` and `tests/test_build_windows_task.py` run PowerShell scripts and
-are skipped when `pwsh` is not on `PATH`. CI (`.github/workflows/ci.yml`, check `unit tests`) runs the same command, then
-`python3 -m installer.footprint check`, `python3 -m installer.schema check` and `python3 -m installer.build check`.
+are skipped when `pwsh` is not on `PATH`. The 19 tests that run `makensis` are skipped when it is not on
+`PATH`.
+
+CI (`.github/workflows/ci.yml`, check `unit tests`) runs the same command on a runner without `makensis`, so those 19
+are skipped there. It then runs `python3 -m installer.footprint check`, `python3 -m installer.schema check` and
+`python3 -m installer.build check`, installs `makensis` (Ubuntu package `nsis`) and compiles
+`installer/nsis/main.nsi` with warnings as errors, once as is and once with the test-only engine override.
 
 ## How a kit is built
 
