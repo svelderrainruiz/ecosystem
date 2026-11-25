@@ -98,6 +98,7 @@ def catalogue():
         ("GetTime", "FileFunc", 1082, "Returns separate date and time fields for the step log."),
         ("GetFileAttributes", "FileFunc", 1218, "Returns 1 or 0 for a tested attribute; empty and error on failure."),
         ("un.GetFileAttributes", "FileFunc", 1218, "Uninstaller form: same attribute result and error contract."),
+        ("un.GetParameters", "FileFunc", 1445, "Uninstaller form: the command line after the program path, outer blanks cut."),
         ("StrCase", "StrFunc", 158, "Returns the case-normalized field value."),
         ("StrStr", "StrFunc", 1063, "Returns the suffix starting at the match, or an empty string.")):
         pages["${" + name + "}"] = Page(f"docs/Includes/{header}/{name.removeprefix('un.')}.md",
@@ -114,7 +115,7 @@ def catalogue():
         ("System::Call", "Contrib/System/System.html", "Contrib/System/Source/System.c#L370",
          "Calls a native function or constructs a struct; .s returns on the stack, .rN in register N."),
         ("System::Free", "Contrib/System/System.html", "Contrib/System/Source/System.c#L228",
-         "Release the struct allocated by System::Call, not the Win32 security descriptor."),
+         "Release a struct allocated by System::Call; a Win32 allocation needs its own release."),
         ("UserInfo::GetAccountType", "Contrib/UserInfo/UserInfo.nsi", "Contrib/UserInfo/UserInfo.c#L166",
          "Pop the account type string and compare with Admin; it is not an error-flag result.")):
         pages[item] = Page(doc, anchor, note)
@@ -130,7 +131,7 @@ def catalogue():
     for name, line in (("EM_LIMITTEXT", 199), ("BST_CHECKED", 131), ("CB_RESETCONTENT", 161), ("CB_SETCURSEL", 163)):
         pages["${" + name + "}"] = Page("Include/WinMessages.nsh", f"Include/WinMessages.nsh#L{line}")
 
-    for name in "CMDLINE EXEDIR EXEFILE EXEPATH HWNDPARENT SYSDIR PROGRAMFILES64 APPDATA LOCALAPPDATA".split():
+    for name in "CMDLINE EXEDIR EXEFILE EXEPATH HWNDPARENT INSTDIR SYSDIR PROGRAMFILES64 APPDATA LOCALAPPDATA".split():
         doc = name.removesuffix("64")
         if name in ("APPDATA", "LOCALAPPDATA"):
             pages["$" + name] = Page(f"docs/Variables/{doc}.md", "Source/exehead/util.c#L878",

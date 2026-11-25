@@ -101,6 +101,7 @@ Priority: M = must, S = should. Method: T = test, I = inspection, D = demonstrat
 | INST-REQ-082 | The extension shall refuse to drive an installer of a different major version (INFERRED). | INFERRED | S | T | INST-TC-034 |
 | INST-REQ-083 | Repair shall never create keys or register silently. | D-R5-3 | M | T | INST-TC-037 |
 | INST-REQ-084 | Uninstall shall remove the service, the folder, the uninstall entry and the keys on the PC. | D-R5-1, D-R5-5, D-R3-4, D-R6-4 | M | T | INST-TC-038 |
+| INST-REQ-104 | The uninstaller shall, when started with a window and without administrator rights, ask Windows once for them and end with the exit code of the elevated copy, keeping exit code 38 when the prompt is declined and never prompting in a silent run. | D-R5-1 | M | T | INST-TC-060 |
 
 ## 6. Logs, diagnostics, time zone
 
@@ -142,4 +143,4 @@ Priority: M = must, S = should. Method: T = test, I = inspection, D = demonstrat
 | INST-REQ-097 | The operator's own-PC test shall be completed before the first partner joins (INFERRED). | INFERRED | S | I | INST-TC-051 |
 | INST-REQ-101 | The source repository's rules shall accept changes by pull request only, never run a pull request from a fork on any self-hosted runner, and name the operator as the only code owner. | D-R6-9 | M | I | INST-TC-057 |
 
-Requirement count: 102.
+Requirement count: 103.

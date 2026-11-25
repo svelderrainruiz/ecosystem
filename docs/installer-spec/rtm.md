@@ -78,6 +78,7 @@ Private until the operator publishes it. Every requirement has a decision (or th
 | INST-REQ-082 | INFERRED | ARCH-8, ARCH-13 | INST-TC-034 | specified |
 | INST-REQ-083 | D-R5-3 | ARCH-8 | INST-TC-037 | specified |
 | INST-REQ-084 | D-R5-1, D-R5-5, D-R3-4, D-R6-4 | ARCH-9 | INST-TC-038 | specified |
+| INST-REQ-104 | D-R5-1 | ARCH-5, ARCH-9 | INST-TC-060 | specified |
 | INST-REQ-046 | INFERRED | ARCH-10 | INST-TC-040 | specified |
 | INST-REQ-047 | D-R4-6 | ARCH-10, ARCH-11 | INST-TC-040 | specified |
 | INST-REQ-048 | D-R5-7, D-R6-11 | ARCH-10 | INST-TC-041 | specified |
@@ -141,7 +142,7 @@ Private until the operator publishes it. Every requirement has a decision (or th
 | D-R4-7 | INST-REQ-031, INST-REQ-060, INST-REQ-062, INST-REQ-089 |
 | D-R4-8 | Not a requirement: container statistics are an extension panel feature (issue #40), outside the installer. |
 | D-R4-9 | INST-REQ-056, INST-REQ-059 |
-| D-R5-1 | INST-REQ-043, INST-REQ-044, INST-REQ-045, INST-REQ-084, INST-REQ-096 |
+| D-R5-1 | INST-REQ-043, INST-REQ-044, INST-REQ-045, INST-REQ-084, INST-REQ-096, INST-REQ-104 |
 | D-R5-2 | INST-REQ-013, INST-REQ-014 |
 | D-R5-3 | INST-REQ-040, INST-REQ-041, INST-REQ-042, INST-REQ-083 |
 | D-R5-4 | INST-REQ-027, INST-REQ-028, INST-REQ-029, INST-REQ-035 |

@@ -42,6 +42,17 @@ SECURE_CREATE_OPERATIONS = frozenset((
 ))
 # The one exact complete instruction that Elevate_Raise (installer/nsis/elevate.nsh) may execute: the relaunch with runas.
 ELEVATE_RAISE_OPERATIONS = frozenset(('ExecShell "runas" "$EXEPATH" "$carry_args"',))
+# The exact complete instructions that un.Elevate_Raise (installer/nsis/uninstall.nsh) may execute: the one relaunch of this uninstaller with
+# runas, the wait for it and the read of its exit code (UNINST-2, #335).
+UNINSTALL_RAISE_OPERATIONS = frozenset((
+    """System::Call '*(&l4, i 0x540, p $HWNDPARENT, w "runas", w "$EXEPATH", w "/ELEVATED _?=$INSTDIR", p 0, i 1, p 0, p 0, p 0, p 0, i 0, p 0, p 0) p .r1'""",
+    """System::Call 'shell32::ShellExecuteExW(p r1) i .r0'""",
+    """System::Call '*$1(i, i, p, p, p, p, p, i, p, p, p, p, i, p, p .r2)'""",
+    "System::Free $1",
+    """System::Call 'kernel32::WaitForSingleObject(p r2, i -1) i .r0'""",
+    """System::Call 'kernel32::GetExitCodeProcess(p r2, *i .r3) i .r0'""",
+    """System::Call 'kernel32::CloseHandle(p r2)'""",
+))
 PS_WRITE_CMDLETS = (
     "Set-Content|Add-Content|Out-File|New-Item|Remove-Item|Set-ItemProperty|New-ItemProperty|Remove-ItemProperty|"
     "Copy-Item|Move-Item|Rename-Item|New-Service|Set-Service|Remove-Service|Start-Process|Invoke-Expression|"
@@ -269,6 +280,8 @@ def check_source(sources, fp=None, allow=None):
                                               and lines[f["line"] - 1].strip() in ELEVATE_RAISE_OPERATIONS) \
                     and not (name == "winsys.nsh" and f["function"] == "Winsys_FolderCreate"
                              and lines[f["line"] - 1].strip() in SECURE_CREATE_OPERATIONS) \
+                    and not (name == "uninstall.nsh" and f["function"] == "un.Elevate_Raise"
+                             and lines[f["line"] - 1].strip() in UNINSTALL_RAISE_OPERATIONS) \
                     and not _exec_allowed(fp, name, f):
                 bad.append(f"{where}: command execution {f['target']!r} is outside the footprint")
             elif f["kind"] == "marker":
