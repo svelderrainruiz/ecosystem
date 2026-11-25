@@ -44,6 +44,8 @@ TRAILING = ["a ", " ", "a  "]
 REFUSED = [" /b", " -b", " - b", " -", '"b', " /S y", " /D=C:\\y", " /NCRC", " /GITHUB_TOKEN=1", " ", "  "]
 LABELS = {"partner_id": "Partner or organisation ID", "work_dir": "Work folder"}
 RUNNING = "/ELEVATED /MODE=local /INSTALL_DIR=C:\\x"
+EXPERIMENTAL_BOX = ("MB_OK|MB_ICONEXCLAMATION This is an EXPERIMENTAL installer (test build). It is not for production use: run it only where you can undo the changes."
+                    " /SD IDOK")
 
 
 def stub_scan(line):
@@ -220,7 +222,8 @@ def check_elevated_alone_is_the_wizard_and_a_silent_run_is_unchanged(program=Non
     program = program or prog()
     for params in ("/ELEVATED", "/ELEVATED /INSTALL_DIR=C:\\x", "/MODE=local /INSTALL_DIR=C:\\x", "/ELEVATEDX /MODE=local", "/ELEVATED=1 /MODE=local"):
         c = child(params, program)
-        assert (c.code, c.boxes, c.var["carried"], c.var.get("in_install_dir", "")) == (None, [], "0", ""), params
+        # an ordinary interactive run: its one box is the experimental warning every wizard starts with (issue 329)
+        assert (c.code, c.boxes, c.var["carried"], c.var.get("in_install_dir", "")) == (None, [EXPERIMENTAL_BOX], "0", ""), params
     s = child("/S /ELEVATED /MODE=local /INSTALL_DIR=C:\\x", program, admin=False, silent=True)
     assert (s.code, s.boxes, s.var["carried"]) == (38, [], "0")
     s = child("/S /ELEVATED /MODE=local /FOO=x", program, silent=True)

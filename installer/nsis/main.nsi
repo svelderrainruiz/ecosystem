@@ -6,6 +6,11 @@ RequestExecutionLevel user
 !else
   OutFile "installer.exe"
 !endif
+; An experimental installer (issue 329): the window caption (also the title of every box) and the branding line say so.
+; The branding line is one line of 108 dialog units between Cancel and < Back; a longer text is cut off.
+Caption "Ecosystem Runner Setup (EXPERIMENTAL)"
+UninstallCaption "Ecosystem Runner Uninstall (EXPERIMENTAL)"
+BrandingText "EXPERIMENTAL (test build)"
 
 !include "trust.nsh"
 !include "cmdline.nsh"
@@ -40,6 +45,8 @@ SectionEnd
 
 ; A command line of 1023 characters or more first (exit 50, #136), then the secret options (exit 32 or 33 before anything else), then the silent keys and the mode, then the trust check and the elevation gate. The elevated copy of an interactive run (Carried_Detect,
 ; SL-21b) reads the answers its first window handed over through the same key path as a silent run, and every page they are for is skipped.
+; The experimental warning (issue 329) is the first box of an interactive run, in front of every trust box (a missing signer included); OK only closes it and changes no exit code.
+; A silent run and the elevated copy ($carried 1, its first window already showed it) never show it.
 Function .onInit
   !insertmacro RefuseLongCommandLine
   !insertmacro RefuseSecretOptions
@@ -54,6 +61,10 @@ Function .onInit
     Call Licence_SilentGate
   ${EndIf}
   StrCpy $LogExistingOnly 0
+  ${IfNot} ${Silent}
+  ${AndIf} $carried != 1
+    MessageBox MB_OK|MB_ICONEXCLAMATION "This is an EXPERIMENTAL installer (test build). It is not for production use: run it only where you can undo the changes." /SD IDOK
+  ${EndIf}
   Call TrustCheck
   Call Elevate_SilentGate
   Call Update_Detect

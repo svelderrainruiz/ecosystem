@@ -32,13 +32,13 @@ def catalogue():
     """Only knowledge lives here; no project file names, line numbers or use counts."""
     pages = {}
     for cmd in """!define !else !endif !error !ifdef !ifndef !include !insertmacro !macro !macroend
-                  !pragma Abort Call ClearErrors CopyFiles CreateDirectory Delete DeleteRegKey DetailPrint
-                  EnableWindow Exch ExecShell File FileClose FileOpen FileRead FileSeek FileWrite FindClose
+                  !pragma Abort BrandingText Call Caption ClearErrors CopyFiles CreateDirectory Delete DeleteRegKey
+                  DetailPrint EnableWindow Exch ExecShell File FileClose FileOpen FileRead FileSeek FileWrite FindClose
                   FindFirst FindNext Function FunctionEnd GetDlgItem Goto IfErrors IfFileExists IfSilent
                   IntCmp IntFmt IntOp MessageBox OutFile Page Pop Push Quit ReadRegDWORD ReadRegStr
                   RequestExecutionLevel Return RMDir Section SectionEnd SendMessage SetErrorLevel SetErrors
-                  SetOverwrite SetRegView SetShellVarContext Sleep StrCmp StrCmpS StrCpy StrLen Unicode Var
-                  WriteRegStr WriteUninstaller""".split():
+                  SetOverwrite SetRegView SetShellVarContext Sleep StrCmp StrCmpS StrCpy StrLen UninstallCaption
+                  Unicode Var WriteRegStr WriteUninstaller""".split():
         pages[cmd] = Page(f"docs/Commands/{cmd}.md")
 
     # The line is the dispatch case at v310, not a line in the current upstream tree.
