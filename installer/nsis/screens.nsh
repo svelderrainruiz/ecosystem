@@ -499,12 +499,20 @@ Function Check_image_year
     Return
   ${EndIf}
   ${StrCase} $R1 $R0 "L"
-  ${If} $R1 == "2024"
-    StrCpy $in_image_year "2024"
-  ${ElseIf} $R1 == "2025"
-    StrCpy $in_image_year "2025"
+  ${If} $R1 == "2026q3"
+    StrCpy $in_image_year "2026q3"
+  ${ElseIf} $R1 == "2026q1patch2"
+    StrCpy $in_image_year "2026q1patch2"
+  ${ElseIf} $R1 == "2026q1patch1"
+    StrCpy $in_image_year "2026q1patch1"
+  ${ElseIf} $R1 == "2026q1"
+    StrCpy $in_image_year "2026q1"
+  ${ElseIf} $R1 == "2025q3patch1"
+    StrCpy $in_image_year "2025q3patch1"
+  ${ElseIf} $R1 == "2025q3"
+    StrCpy $in_image_year "2025q3"
   ${Else}
-    StrCpy $R9 "must be one of 2024, 2025"
+    StrCpy $R9 "must be one of 2026q3, 2026q1patch2, 2026q1patch1, 2026q1, 2025q3patch1, 2025q3"
   ${EndIf}
 FunctionEnd
 
@@ -559,10 +567,10 @@ Function Check_together
   StrCpy $R9 ""
   ${If} $in_image_variant == ""
   ${AndIf} $in_image_year != ""
-    StrCpy $R9 "Choose both the NI docker image container type and year, or neither"
+    StrCpy $R9 "Choose both the NI docker image container type and version, or neither"
   ${ElseIf} $in_image_variant != ""
   ${AndIf} $in_image_year == ""
-    StrCpy $R9 "Choose both the NI docker image container type and year, or neither"
+    StrCpy $R9 "Choose both the NI docker image container type and version, or neither"
   ${EndIf}
 FunctionEnd
 
@@ -571,11 +579,91 @@ Function Image_Known
   ${If} $in_image_variant == ""
     Return
   ${EndIf}
-  StrCpy $R9 "This NI docker image container type and year are not in the pinned list"
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q3"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1patch2"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1patch1"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q3"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1patch2"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1patch1"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2025q3patch1"
+    Return
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2025q3"
+    Return
+  ${EndIf}
+  StrCpy $R9 "This NI docker image container type and version are not in the pinned list"
 FunctionEnd
 
 Function Image_Ref
   StrCpy $R8 ""
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q3"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:ae1894bbba666c1f89ebcfad491713d9ed049b24448a53aaeeacec8556377524"
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1patch2"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:d44465ad15415150d36221017ce54ca3d9f15db2e1cbf3227fee3e0f7e97f13c"
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1patch1"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:d834446e486690f4f8a8dede779950e3396e87152849560f5544060bffd91890"
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:57c453dabd2ff0185ce718d88704921bb82eb83189f4049205ed9b4da7df7bcd"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q3"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:b09fe6328707cac6ef3bde3402dee92d7e6382edb2ec75995c3276e9ab6de7f0"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1patch2"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:c6484cf4d66a14355bd3195849c090573f413ed355c429c8cc0752fee589b28c"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1patch1"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:c9cb4e6d9caddffcba11538f29b4189cca98747f87db348b5fd30065551f573b"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:597ba99260c0511475e27c04f13dd06f2f57e8ce7d3ee6c1ca289020b1f8c426"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2025q3patch1"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:8f20f27dd87abf460e619cece97cc0d19db5f9cb446496340ead3d1531517577"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2025q3"
+    StrCpy $R8 "docker.io/nationalinstruments/labview@sha256:9938561c6460841674f9b1871d8562242f51fe9fb72a2c39c66608491edf429c"
+  ${EndIf}
 FunctionEnd
 
 ; Exit 30 for a bad value and 31 for an unknown key, after the step is logged with the key NAME only; nothing is written before them.
@@ -835,7 +923,7 @@ Function Carry_Answers
     Call Carry_One
   ${EndIf}
   ${If} $in_image_year != ""
-    Push "NI docker image year"
+    Push "NI docker image version"
     Push "/IMAGE_YEAR="
     Push $in_image_year
     Call Carry_One
@@ -1089,20 +1177,147 @@ Function Page_image
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateLabel} 0u 4u 100% 8u "NI docker image container type"
-  ${NSD_CreateText} 0u 12u 100% 12u ""
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Choose the container type, then the NI docker image version. The runner uses it; it is pulled at install time. (none) skips it."
+  Pop $0
+  ${NSD_CreateLabel} 0u 24u 100% 8u "NI docker image container type"
+  Pop $0
+  ${NSD_CreateDropList} 0u 33u 100% 52u ""
   Pop $ctl_image_variant
-  SendMessage $ctl_image_variant ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 22u 100% 8u "NI docker image year"
-  ${NSD_CreateText} 0u 30u 100% 12u ""
+  ${NSD_CB_AddString} $ctl_image_variant "(none)"
+  ${NSD_CB_AddString} $ctl_image_variant "windows"
+  ${NSD_CB_AddString} $ctl_image_variant "linux"
+  ${NSD_CreateLabel} 0u 48u 100% 8u "NI docker image version"
+  Pop $0
+  ${NSD_CreateDropList} 0u 57u 100% 70u ""
   Pop $ctl_image_year
-  SendMessage $ctl_image_year ${EM_LIMITTEXT} 1023 0
+  ; Back from a later page shows the answers again: (none) unless a container type is held, then the versions of that type.
+  SendMessage $ctl_image_variant ${CB_SETCURSEL} 0 0
+  ${If} $in_image_variant == "windows"
+    SendMessage $ctl_image_variant ${CB_SETCURSEL} 1 0
+  ${ElseIf} $in_image_variant == "linux"
+    SendMessage $ctl_image_variant ${CB_SETCURSEL} 2 0
+  ${EndIf}
+  Call Image_Fill
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q3"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 0 0
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1patch2"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 1 0
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1patch1"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 2 0
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $in_image_year == "2026q1"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 3 0
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q3"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 0 0
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1patch2"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 1 0
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1patch1"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 2 0
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2026q1"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 3 0
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2025q3patch1"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 4 0
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $in_image_year == "2025q3"
+    SendMessage $ctl_image_year ${CB_SETCURSEL} 5 0
+  ${EndIf}
+  ${NSD_OnChange} $ctl_image_variant Image_TypeChanged
   nsDialogs::Show
+FunctionEnd
+
+; nsDialogs calls this when the container type changes, with the control handle on the stack.
+Function Image_TypeChanged
+  Pop $0
+  Call Image_Fill
+FunctionEnd
+
+; The version list: emptied, then the pinned versions of the container type shown, newest first; greyed out for (none).
+Function Image_Fill
+  ${NSD_GetText} $ctl_image_variant $R1
+  SendMessage $ctl_image_year ${CB_RESETCONTENT} 0 0
+  EnableWindow $ctl_image_year 0
+  ${If} $R1 == "windows"
+    EnableWindow $ctl_image_year 1
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q3"
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q1 patch 2"
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q1 patch 1"
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q1"
+  ${EndIf}
+  ${If} $R1 == "linux"
+    EnableWindow $ctl_image_year 1
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q3"
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q1 patch 2"
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q1 patch 1"
+    ${NSD_CB_AddString} $ctl_image_year "2026 Q1"
+    ${NSD_CB_AddString} $ctl_image_year "2025 Q3 patch 1"
+    ${NSD_CB_AddString} $ctl_image_year "2025 Q3"
+  ${EndIf}
 FunctionEnd
 
 Function Page_image_Leave
   ${NSD_GetText} $ctl_image_variant $in_image_variant
-  ${NSD_GetText} $ctl_image_year $in_image_year
+  ${If} $in_image_variant == "(none)"
+    StrCpy $in_image_variant ""
+  ${EndIf}
+  ${NSD_GetText} $ctl_image_year $R0
+  StrCpy $in_image_year ""
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $R0 == "2026 Q3"
+    StrCpy $in_image_year "2026q3"
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $R0 == "2026 Q1 patch 2"
+    StrCpy $in_image_year "2026q1patch2"
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $R0 == "2026 Q1 patch 1"
+    StrCpy $in_image_year "2026q1patch1"
+  ${EndIf}
+  ${If} $in_image_variant == "windows"
+  ${AndIf} $R0 == "2026 Q1"
+    StrCpy $in_image_year "2026q1"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $R0 == "2026 Q3"
+    StrCpy $in_image_year "2026q3"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $R0 == "2026 Q1 patch 2"
+    StrCpy $in_image_year "2026q1patch2"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $R0 == "2026 Q1 patch 1"
+    StrCpy $in_image_year "2026q1patch1"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $R0 == "2026 Q1"
+    StrCpy $in_image_year "2026q1"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $R0 == "2025 Q3 patch 1"
+    StrCpy $in_image_year "2025q3patch1"
+  ${EndIf}
+  ${If} $in_image_variant == "linux"
+  ${AndIf} $R0 == "2025 Q3"
+    StrCpy $in_image_year "2025q3"
+  ${EndIf}
   ${If} $in_image_variant != ""
     Call Check_image_variant
     ${If} $R9 != ""
@@ -1113,7 +1328,7 @@ Function Page_image_Leave
   ${If} $in_image_year != ""
     Call Check_image_year
     ${If} $R9 != ""
-      MessageBox MB_OK|MB_ICONEXCLAMATION "NI docker image year: $R9." /SD IDOK
+      MessageBox MB_OK|MB_ICONEXCLAMATION "NI docker image version: $R9." /SD IDOK
       Abort
     ${EndIf}
   ${EndIf}

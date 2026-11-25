@@ -10,7 +10,7 @@
     {"id": "forge", "title": "Forge addresses and allow-lists", "help": "The GitHub or GitLab address (https:// only), the partner or organisation ID and the allow-list. An empty box is skipped."},
     {"id": "network", "title": "Proxy and DNS", "help": "Only if this PC needs them: a proxy address (http:// or https://) and DNS servers, separated by commas. An empty box is skipped."},
     {"id": "labview", "title": "LabVIEW", "help": "Type the LabVIEW version this PC uses. An empty box is skipped."},
-    {"id": "image", "title": "NI docker image"},
+    {"id": "image", "title": "NI docker image", "help": "Choose the container type, then the NI docker image version. The runner uses it; it is pulled at install time. (none) skips it."},
     {"id": "licences", "title": "Licence conditions", "only_when": "image_chosen", "help": "Shown because an NI docker image was chosen. Tick both licence boxes to continue."},
     {"id": "secrets", "title": "Add secrets", "interactive_only": true, "repeatable": true, "help": "Tokens and passwords are typed here only, never on the command line. Fill in only the ones you need; an empty box is skipped."}
   ],
@@ -26,7 +26,7 @@
     {"id": "dns_servers", "label": "DNS servers (comma separated)", "kind": "list", "page": "network", "req": ["INST-REQ-021"]},
     {"id": "labview_version", "label": "LabVIEW version", "kind": "text", "page": "labview", "req": ["INST-REQ-021"]},
     {"id": "image_variant", "label": "NI docker image container type", "kind": "choice", "page": "image", "choices": ["windows", "linux"], "req": ["INST-REQ-021", "INST-REQ-022"]},
-    {"id": "image_year", "label": "NI docker image year", "kind": "choice", "page": "image", "choices": ["2024", "2025"], "req": ["INST-REQ-021", "INST-REQ-022"]},
+    {"id": "image_year", "label": "NI docker image version", "kind": "choice", "page": "image", "choices": ["2026q3", "2026q1patch2", "2026q1patch1", "2026q1", "2025q3patch1", "2025q3"], "req": ["INST-REQ-021", "INST-REQ-022"]},
     {"id": "ni_licence_held", "label": "Yes, we hold a development licence (NI licence conditions)", "kind": "licence", "page": "licences", "req": ["INST-REQ-018", "INST-REQ-073"]},
     {"id": "engine_licence_accepted", "label": "Yes, we accept the container engine licence conditions", "kind": "licence", "page": "licences", "req": ["INST-REQ-018", "INST-REQ-073"]},
     {"id": "github_token", "label": "GitHub registration token", "kind": "secret", "no_blank": true, "page": "secrets", "req": ["INST-REQ-076"]},
@@ -63,11 +63,20 @@
     "accepted_prefix": ["Windows Server 2022", "Windows Server 2025"]
   },
   "images": {
-    "note": "Pinned at build time. A null repository or digest is not yet recorded and is refused with a typed error; it is never asked of the user.",
+    "note": "Pinned at build time. A null repository or digest is not yet recorded and is refused with a typed error; it is never asked of the user. The year key holds the version (the tag without its container type); label is what the version list shows.",
+    "source": "docker.io/nationalinstruments/labview",
+    "provenance": "Read 2026-11-25 07:12 UTC: each digest from the Docker Hub tag list (hub.docker.com/v2/repositories/nationalinstruments/labview/tags?page_size=100) and from the registry (anonymous pull token from auth.docker.io, then HEAD registry-1.docker.io/v2/nationalinstruments/labview/manifests/<tag> with the manifest-list, OCI-index and manifest Accept headers: Docker-Content-Digest). A digest is recorded only where both agreed; all ten agreed. latest-windows and latest-linux are not pinned: they move.",
     "list": [
-      {"variant": "windows", "year": "2024", "digest": null, "repository": null},
-      {"variant": "linux", "year": "2024", "digest": null, "repository": null},
-      {"variant": "linux", "year": "2025", "digest": null, "repository": null}
+      {"variant": "windows", "year": "2026q3", "label": "2026 Q3", "tag": "2026q3-windows", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:ae1894bbba666c1f89ebcfad491713d9ed049b24448a53aaeeacec8556377524"},
+      {"variant": "windows", "year": "2026q1patch2", "label": "2026 Q1 patch 2", "tag": "2026q1patch2-windows", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:d44465ad15415150d36221017ce54ca3d9f15db2e1cbf3227fee3e0f7e97f13c"},
+      {"variant": "windows", "year": "2026q1patch1", "label": "2026 Q1 patch 1", "tag": "2026q1patch1-windows", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:d834446e486690f4f8a8dede779950e3396e87152849560f5544060bffd91890"},
+      {"variant": "windows", "year": "2026q1", "label": "2026 Q1", "tag": "2026q1-windows", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:57c453dabd2ff0185ce718d88704921bb82eb83189f4049205ed9b4da7df7bcd"},
+      {"variant": "linux", "year": "2026q3", "label": "2026 Q3", "tag": "2026q3-linux", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:b09fe6328707cac6ef3bde3402dee92d7e6382edb2ec75995c3276e9ab6de7f0"},
+      {"variant": "linux", "year": "2026q1patch2", "label": "2026 Q1 patch 2", "tag": "2026q1patch2-linux", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:c6484cf4d66a14355bd3195849c090573f413ed355c429c8cc0752fee589b28c"},
+      {"variant": "linux", "year": "2026q1patch1", "label": "2026 Q1 patch 1", "tag": "2026q1patch1-linux", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:c9cb4e6d9caddffcba11538f29b4189cca98747f87db348b5fd30065551f573b"},
+      {"variant": "linux", "year": "2026q1", "label": "2026 Q1", "tag": "2026q1-linux", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:597ba99260c0511475e27c04f13dd06f2f57e8ce7d3ee6c1ca289020b1f8c426"},
+      {"variant": "linux", "year": "2025q3patch1", "label": "2025 Q3 patch 1", "tag": "2025q3patch1-linux", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:8f20f27dd87abf460e619cece97cc0d19db5f9cb446496340ead3d1531517577"},
+      {"variant": "linux", "year": "2025q3", "label": "2025 Q3", "tag": "2025q3-linux", "repository": "docker.io/nationalinstruments/labview", "digest": "sha256:9938561c6460841674f9b1871d8562242f51fe9fb72a2c39c66608491edf429c"}
     ]
   }
 }

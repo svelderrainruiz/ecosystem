@@ -59,7 +59,7 @@ def init(cmd, schema=None):
     return w, w.run(".onInit")
 
 
-def ready(w, variant="linux", year="2024", held="yes", accepted="yes"):
+def ready(w, variant="linux", year="2026q1", held="yes", accepted="yes"):
     w.var.update({"in_image_variant": variant, "in_image_year": year, "in_ni_licence_held": held, "in_engine_licence_accepted": accepted})
     return w
 
@@ -109,15 +109,16 @@ class InteractivePages(unittest.TestCase):
         self.assertEqual((code, w.boxes), (None, []))
 
     def test_a_pair_that_is_not_pinned_is_refused_with_one_plain_message(self):
-        w, code = leave("image", {"image_variant": "windows", "image_year": "2025"})
+        w, code = leave("image", {"image_variant": "windows", "image_year": "2025 Q3"})
         self.assertEqual(code, "abort")
         self.assertEqual(len(w.boxes), 1)
         self.assertIn("/SD IDOK", w.boxes[0])
 
-    def test_every_pinned_pair_is_accepted(self):
-        for e in SCHEMA["images"]["list"]:
-            w, code = leave("image", {"image_variant": e["variant"], "image_year": e["year"]}, schema=pinned_schema())
-            self.assertEqual((code, w.boxes), (None, []), e)
+    def test_every_pinned_pair_is_accepted_by_its_shown_label_and_kept_as_its_version(self):
+        for s in (SCHEMA, pinned_schema()):
+            for e in s["images"]["list"]:
+                w, code = leave("image", {"image_variant": e["variant"], "image_year": e["label"]}, schema=s)
+                self.assertEqual((code, w.boxes, w.var["in_image_variant"], w.var["in_image_year"]), (None, [], e["variant"], e["year"]), e)
 
     def test_no_image_leaves_the_image_page_as_before(self):
         w, code = leave("image", {})
@@ -126,15 +127,15 @@ class InteractivePages(unittest.TestCase):
 
 class SilentGate(unittest.TestCase):
     def test_both_yes_passes(self):
-        w, code = init("/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2024" + BOTH, pinned_schema())
+        w, code = init("/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2026q1" + BOTH, pinned_schema())
         self.assertEqual((code, w.log), (None, []))
 
     def test_the_answers_are_case_insensitive(self):
-        w, code = init("/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2024 /NI_LICENCE_HELD=YES /ENGINE_LICENCE_ACCEPTED=Yes", pinned_schema())
+        w, code = init("/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2026q1 /NI_LICENCE_HELD=YES /ENGINE_LICENCE_ACCEPTED=Yes", pinned_schema())
         self.assertEqual(code, None)
 
     def test_one_no_one_missing_or_both_missing_exit_35(self):
-        base = "/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2024"
+        base = "/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2026q1"
         for extra in (" /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=no", " /NI_LICENCE_HELD=no /ENGINE_LICENCE_ACCEPTED=yes",
                       " /NI_LICENCE_HELD=yes", " /ENGINE_LICENCE_ACCEPTED=yes", ""):
             w, code = init(base + extra, pinned_schema())
@@ -143,10 +144,10 @@ class SilentGate(unittest.TestCase):
             self.assertEqual((w.files, w.execs), ({}, []))
 
     def test_an_unpinned_pair_exits_36_and_is_checked_before_the_licence(self):
-        w, code = init("/S /IMAGE_VARIANT=windows /IMAGE_YEAR=2025")
+        w, code = init("/S /IMAGE_VARIANT=windows /IMAGE_YEAR=2025q3")
         self.assertEqual(code, CODES["image-not-pinned"])
         self.assertEqual(w.log, [("image-not-pinned", "image", "36")])
-        w, code = init("/S /IMAGE_VARIANT=windows /IMAGE_YEAR=2025" + BOTH)
+        w, code = init("/S /IMAGE_VARIANT=windows /IMAGE_YEAR=2025q3" + BOTH)
         self.assertEqual(code, 36)
 
     def test_no_image_keys_changes_nothing(self):
@@ -176,12 +177,15 @@ def half_pinned(**keep):
 
 
 class RefuseEarly(unittest.TestCase):
-    PAIR = "/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2024" + BOTH
+    PAIR = "/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2026q1" + BOTH
 
-    def test_with_the_real_unpinned_table_a_silent_run_exits_36_and_writes_nothing(self):
+    def test_with_the_real_table_every_pinned_pair_passes_and_an_unpinned_one_exits_36_and_writes_nothing(self):
         for e in SCHEMA["images"]["list"]:
             w, code = init("/S /IMAGE_VARIANT=%s /IMAGE_YEAR=%s%s" % (e["variant"], e["year"], BOTH))
-            self.assertEqual(code, 36, e)
+            self.assertEqual((code, w.log), (None, []), e)
+        for v, y in (("windows", "2025q3"), ("windows", "2025q3patch1")):
+            w, code = init("/S /IMAGE_VARIANT=%s /IMAGE_YEAR=%s%s" % (v, y, BOTH))
+            self.assertEqual(code, 36, (v, y))
             self.assertEqual(w.log, [("image-not-pinned", "image", "36")])
             self.assertEqual((w.files, w.execs, w.boxes), ({}, [], []))
 
@@ -203,13 +207,16 @@ class RefuseEarly(unittest.TestCase):
             w.run("Image_Ref")
             self.assertEqual(w.var["R8"], "", keep)
 
-    def test_the_interactive_page_refuses_an_unpinned_pair_with_the_pinned_list_message(self):
-        for s in (None, half_pinned(digest=1), half_pinned(repository=1)):
-            w, code = leave("image", {"image_variant": "linux", "image_year": "2024"}, schema=s)
-            self.assertEqual(code, "abort")
-            self.assertEqual(len(w.boxes), 1)
-            self.assertIn("not in the pinned list", w.boxes[0])
-            self.assertIn("/SD IDOK", w.boxes[0])
+    def test_the_interactive_page_never_offers_a_half_pinned_entry_and_its_check_refuses_it_with_the_pinned_list_message(self):
+        for s in (half_pinned(digest=1), half_pinned(repository=1)):
+            w = world(silent=False, schema=s, texts={"ctl_image_variant": "linux"})
+            w.run("Image_Fill")
+            self.assertEqual(w.combos.get("ctl_image_year", []), [])
+            w, code = leave("image", {"image_variant": "linux", "image_year": "2026 Q1"}, schema=s)
+            self.assertEqual((code, w.boxes), ("abort", ["MB_OK|MB_ICONEXCLAMATION %s. /SD IDOK" % S.TOGETHER_TEXT]))
+            w = ready(world(silent=False, schema=s))
+            w.run("Image_Known")
+            self.assertIn("not in the pinned list", w.var["R9"])
 
 
 class OrderParity(unittest.TestCase):
@@ -221,12 +228,12 @@ class OrderParity(unittest.TestCase):
             return S.run_silent(schema, ["/S"] + args, "Microsoft Windows 11 Pro", d, datetime.datetime(2026, 11, 22, 7, 5, 9), log=[])
 
     def test_a_command_line_with_both_errors_exits_36_in_nsis_and_in_python(self):
-        args = ["/INSTALL_DIR=C:\\ci", "/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2024", "/NI_LICENCE_HELD=no"]
+        args = ["/INSTALL_DIR=C:\\ci", "/IMAGE_VARIANT=windows", "/IMAGE_YEAR=2025q3", "/NI_LICENCE_HELD=no"]
         self.assertEqual(init(" ".join(["/S"] + args))[1], 36)
         self.assertEqual(self.python_exit(SCHEMA, args), 36)
 
     def test_with_a_pinned_pair_the_licence_error_is_35_in_both(self):
-        args = ["/INSTALL_DIR=C:\\ci", "/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2024", "/NI_LICENCE_HELD=no"]
+        args = ["/INSTALL_DIR=C:\\ci", "/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2026q1", "/NI_LICENCE_HELD=no"]
         self.assertEqual(init(" ".join(["/S"] + args), pinned_schema())[1], 35)
         self.assertEqual(self.python_exit(pinned_schema(), args), 35)
 
@@ -328,7 +335,7 @@ class Pull(unittest.TestCase):
         self.assertIn("ONLY for tests", text)
 
     def test_with_digests_still_null_nothing_is_pulled_and_the_run_exits_36(self):
-        w, code = self.run_pull()
+        w, code = self.run_pull(half_pinned())
         self.assertEqual((code, w.execs), (36, []))
         self.assertEqual(w.log, [("image-not-pinned", "image", "36")])
 
@@ -546,7 +553,7 @@ class NoSilentHang(unittest.TestCase):
 class Hygiene(unittest.TestCase):
     def test_a_canary_secret_reaches_no_message_log_file_or_command(self):
         s = pinned_schema()
-        w = world("/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2024 /GITHUB_TOKEN=%s" % CANARY, schema=s)
+        w = world("/S /IMAGE_VARIANT=linux /IMAGE_YEAR=2026q1 /GITHUB_TOKEN=%s" % CANARY, schema=s)
         w.run(".onInit")
         leaked(self, w, CANARY)
         w = with_engine(ready(world(schema=s, exec_codes=[1]), variant="linux"))

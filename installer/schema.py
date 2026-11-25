@@ -135,7 +135,7 @@ def _wired_page(spec, schema, top=4):
 _BAD_TEXT = re.compile("[\\x00-\\x20\\x7f\"'`\\\\]")
 PASS_THROUGH = ("/S", "/D", "/NCRC", "/ELEVATED", "/SIGNER")
 TOGETHER = ("image_variant", "image_year")
-TOGETHER_TEXT = "Choose both the NI docker image container type and year, or neither"
+TOGETHER_TEXT = "Choose both the NI docker image container type and version, or neither"
 _Q = '"'
 
 
@@ -211,10 +211,11 @@ def _together_lines():
             '  ${ElseIf} $in_%s != ""' % a, '  ${AndIf} $in_%s == ""' % b, '    StrCpy $R9 "%s"' % TOGETHER_TEXT, "  ${EndIf}", "FunctionEnd"]
 
 
-PIN_TEXT = "This NI docker image container type and year are not in the pinned list"
+PIN_TEXT = "This NI docker image container type and version are not in the pinned list"
 LICENCE_TEXT = "Tick both licence boxes to continue"
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 _REPOSITORY = re.compile(r"(?=.{1,255}\Z)[a-z0-9][a-z0-9._/-]*")
+_IMAGE_LABEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ]{0,39}")
 
 
 def _image_lines(schema):
@@ -233,16 +234,17 @@ def _image_lines(schema):
     return out + ["FunctionEnd"]
 
 
-def _leave_lines(page, fields):
-    """Page_<page>_Leave: read the fields, check each given one, show ONE message and stay on the page when a value is bad."""
+def _leave_lines(page, fields, reads=None):
+    """Page_<page>_Leave: read the fields (or run the given read lines), check each given one, show ONE message and stay on the page when a value is bad."""
     out = ["", "Function Page_%s_Leave" % page]
     licences = []
     for i in fields:
         if i["kind"] == "licence":
             out += ["  ${NSD_GetState} $ctl_%s $0" % i["id"], '  StrCpy $in_%s "no"' % i["id"], "  ${If} $0 == ${BST_CHECKED}", '    StrCpy $in_%s "yes"' % i["id"], "  ${EndIf}"]
             licences.append(i["id"])
-        else:
+        elif reads is None:
             out.append("  ${NSD_GetText} $ctl_%s $in_%s" % (i["id"], i["id"]))
+    out += reads or []
     for i in fields:
         if i["kind"] == "licence":
             continue
@@ -257,6 +259,57 @@ def _leave_lines(page, fields):
     if licences:
         out += ['    MessageBox MB_OK|MB_ICONEXCLAMATION "%s." /SD IDOK' % LICENCE_TEXT, "    Abort", "  ${EndIf}"]
     return out + ["FunctionEnd"]
+
+
+IMAGE_PAGE = "image"
+IMAGE_NONE = "(none)"
+# A drop-down list is given the height of its opened list (the classic controls, no XPStyle); closed it is one 12u row.
+IMAGE_LISTS = (52, 70)
+
+
+def _pinned_images(schema):
+    return [e for e in schema["images"]["list"] if e.get("digest") and e.get("repository")]
+
+
+def _image_page_lines(schema, page, fields):
+    """The NI docker image page (#329): two drop-down lists built from the pinned table, never typed text. The container type list is (none) and the
+    container types; the version list holds only the labels pinned for the chosen container type and is refilled when the type changes. The Leave turns
+    the shown label back into the version of the table, then runs the same checks as the silent keys (Check_together, Image_Known)."""
+    a, b = TOGETHER
+    spec = {i["id"]: i for i in fields}
+    pinned = _pinned_images(schema)
+    variants = spec[a]["choices"]
+    y = HELP_HEIGHT + 4
+    out = ["", "Function Page_%s" % IMAGE_PAGE, "  ${If} $carried == 1", "    Abort", "  ${EndIf}", "  !insertmacro Dialog_Create",
+           '  ${NSD_CreateLabel} 0u 0u 100%% %du "%s"' % (HELP_HEIGHT, page["help"].replace('"', "'")), "  Pop $0",
+           '  ${NSD_CreateLabel} 0u %du 100%% 8u "%s"' % (y, spec[a]["label"]), "  Pop $0",
+           '  ${NSD_CreateDropList} 0u %du 100%% %du ""' % (y + 9, IMAGE_LISTS[0]), "  Pop $ctl_%s" % a]
+    out += ['  ${NSD_CB_AddString} $ctl_%s "%s"' % (a, v) for v in [IMAGE_NONE] + variants]
+    out += ['  ${NSD_CreateLabel} 0u %du 100%% 8u "%s"' % (y + FIELD_PITCH, spec[b]["label"]), "  Pop $0",
+            '  ${NSD_CreateDropList} 0u %du 100%% %du ""' % (y + FIELD_PITCH + 9, IMAGE_LISTS[1]), "  Pop $ctl_%s" % b,
+            "  ; Back from a later page shows the answers again: (none) unless a container type is held, then the versions of that type.",
+            "  SendMessage $ctl_%s ${CB_SETCURSEL} 0 0" % a]
+    for n, v in enumerate(variants):
+        out += ['  ${%s} $in_%s == "%s"' % ("If" if n == 0 else "ElseIf", a, v), "    SendMessage $ctl_%s ${CB_SETCURSEL} %d 0" % (a, n + 1)]
+    out += ["  ${EndIf}", "  Call Image_Fill"]
+    for v in variants:
+        for n, e in enumerate(x for x in pinned if x["variant"] == v):
+            out += ['  ${If} $in_%s == "%s"' % (a, v), '  ${AndIf} $in_%s == "%s"' % (b, e["year"]), "    SendMessage $ctl_%s ${CB_SETCURSEL} %d 0" % (b, n), "  ${EndIf}"]
+    out += ["  ${NSD_OnChange} $ctl_%s Image_TypeChanged" % a, "  nsDialogs::Show", "FunctionEnd", "",
+            "; nsDialogs calls this when the container type changes, with the control handle on the stack.",
+            "Function Image_TypeChanged", "  Pop $0", "  Call Image_Fill", "FunctionEnd", "",
+            "; The version list: emptied, then the pinned versions of the container type shown, newest first; greyed out for (none).",
+            "Function Image_Fill", "  ${NSD_GetText} $ctl_%s $R1" % a, "  SendMessage $ctl_%s ${CB_RESETCONTENT} 0 0" % b, "  EnableWindow $ctl_%s 0" % b]
+    for v in variants:
+        out += ['  ${If} $R1 == "%s"' % v, "    EnableWindow $ctl_%s 1" % b]
+        out += ['    ${NSD_CB_AddString} $ctl_%s "%s"' % (b, e["label"]) for e in pinned if e["variant"] == v]
+        out += ["  ${EndIf}"]
+    out.append("FunctionEnd")
+    reads = ["  ${NSD_GetText} $ctl_%s $in_%s" % (a, a), '  ${If} $in_%s == "%s"' % (a, IMAGE_NONE), '    StrCpy $in_%s ""' % a, "  ${EndIf}",
+             "  ${NSD_GetText} $ctl_%s $R0" % b, '  StrCpy $in_%s ""' % b]
+    for e in pinned:
+        reads += ['  ${If} $in_%s == "%s"' % (a, e["variant"]), '  ${AndIf} $R0 == "%s"' % e["label"], '    StrCpy $in_%s "%s"' % (b, e["year"]), "  ${EndIf}"]
+    return out + _leave_lines(IMAGE_PAGE, fields, reads)
 
 
 def _silent_lines(schema):
@@ -328,6 +381,14 @@ def validate_schema(schema):
     pairs = [(e["variant"], e["year"]) for e in schema["images"]["list"]]
     if len(set(pairs)) != len(pairs):
         raise SchemaError("images.list holds a variant and year pair twice")
+    by_id = {i["id"]: i for i in schema["inputs"]}
+    a, b = TOGETHER
+    pinned = _pinned_images(schema)
+    if {e["variant"] for e in schema["images"]["list"]} - set(by_id[a]["choices"]) or {e["year"] for e in pinned} != set(by_id[b]["choices"]):
+        raise SchemaError("the image choices must be the container types and versions of images.list")
+    labels = [(e["variant"], e.get("label")) for e in pinned]
+    if not all(lab and _IMAGE_LABEL.fullmatch(lab) for _, lab in labels) or len(set(labels)) != len(labels):
+        raise SchemaError("every pinned image needs its own plain version label")
     if "digest" in "".join(ids):
         raise SchemaError("the image digest is never an input (INST-REQ-021)")
     if len(set(schema["exit_codes"].values())) != len(schema["exit_codes"]):
@@ -383,6 +444,9 @@ def generate_nsh(schema):
     out += _carry_lines(schema)
     for p in schema["pages"]:
         fields = [i for i in schema["inputs"] if i["page"] == p["id"]]
+        if p["id"] == IMAGE_PAGE:
+            out += _image_page_lines(schema, p, fields)
+            continue
         out += ["", "Function Page_%s" % p["id"]]
         if not any(i["kind"] == "secret" for i in fields):
             out += ["  ${If} $carried == 1", "    Abort", "  ${EndIf}"]

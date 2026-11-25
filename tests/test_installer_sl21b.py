@@ -29,11 +29,11 @@ ANSWERS = {
     "mode": "github", "install_dir": "C:\\Program Files\\Ecosystem Runner", "work_dir": "D:\\Work Folder\\Runner",
     "github_url": "https://github.example/acme", "gitlab_url": "https://gitlab.example/acme", "partner_id": "Acme Partner 01",
     "allow_list": "a.example,b.example", "http_proxy": "http://proxy.example:3128", "dns_servers": "1.1.1.1,9.9.9.9",
-    "labview_version": "2024 Q3", "image_variant": "linux", "image_year": "2024", "ni_licence_held": "yes", "engine_licence_accepted": "yes",
+    "labview_version": "2024 Q3", "image_variant": "linux", "image_year": "2026q1", "ni_licence_held": "yes", "engine_licence_accepted": "yes",
 }
 EXPECTED = ('/ELEVATED /MODE=github /INSTALL_DIR="C:\\Program Files\\Ecosystem Runner" /WORK_DIR="D:\\Work Folder\\Runner" /GITHUB_URL=https://github.example/acme '
             '/GITLAB_URL=https://gitlab.example/acme /PARTNER_ID="Acme Partner 01" /ALLOW_LIST=a.example,b.example /HTTP_PROXY=http://proxy.example:3128 '
-            '/DNS_SERVERS=1.1.1.1,9.9.9.9 /LABVIEW_VERSION="2024 Q3" /IMAGE_VARIANT=linux /IMAGE_YEAR=2024 /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=yes')
+            '/DNS_SERVERS=1.1.1.1,9.9.9.9 /LABVIEW_VERSION="2024 Q3" /IMAGE_VARIANT=linux /IMAGE_YEAR=2026q1 /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=yes')
 # Typed values that cross and read back as typed (a tab cannot be typed on a page: Val_Line refuses it).
 CORPUS = ["Acme", "Acme Partner 01", "a/b", "a=b=c", "x=", "  leading", "a  b", "it's", "a`b", "/S", "/S b", "/NCRC x", "-", "/", "a-b", "ünï 名前",
           "cost $5 $PROFILE $$x", "a b/c", "a,b", "D:\\Work Folder\\", "a\\", "a b\\"]
@@ -230,9 +230,9 @@ def check_elevated_alone_is_the_wizard_and_a_silent_run_is_unchanged(program=Non
     assert (s.code, s.boxes) == (31, [])
 
 
-UNPINNED = RUNNING + " /IMAGE_VARIANT=windows /IMAGE_YEAR=2025 /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=yes"
+UNPINNED = RUNNING + " /IMAGE_VARIANT=windows /IMAGE_YEAR=2025q3 /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=yes"
 BAD = [(RUNNING + " /WORK_DIR=", 30, "/WORK_DIR"), ("/ELEVATED /MODE=nope", 30, "/MODE"), (RUNNING + " /GITHUB_URL=http://" + CANARY, 30, "/GITHUB_URL"),
-       (RUNNING + " /FOO=x", 31, "/FOO"), (UNPINNED.replace("windows", "linux").replace("2025", "2024").replace("ACCEPTED=yes", "ACCEPTED=no"), 35, "licences"),
+       (RUNNING + " /FOO=x", 31, "/FOO"), (UNPINNED.replace("windows", "linux").replace("2025q3", "2026q1").replace("ACCEPTED=yes", "ACCEPTED=no"), 35, "licences"),
        (UNPINNED, 36, "image")]
 
 

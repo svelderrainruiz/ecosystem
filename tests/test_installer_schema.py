@@ -82,20 +82,21 @@ class SchemaTests(Base):
         self.assertEqual(code, self.schema["exit_codes"]["unknown-key"])
 
     def test_digest_comes_from_pinned_list(self):
-        """INST-REQ-021, 022: 2025 has no Windows variant; an unpinned or absent entry is a typed refusal."""
+        """INST-REQ-021, 022: 2025 Q3 has no Windows container type; an unpinned or half-recorded entry is a typed refusal."""
         lst = self.schema["images"]["list"]
-        self.assertFalse([e for e in lst if e["year"] == "2025" and e["variant"] == "windows"])
-        self.assertIn("2025", [e["year"] for e in lst])
+        self.assertFalse([e for e in lst if e["year"].startswith("2025") and e["variant"] == "windows"])
+        self.assertIn("2025q3", [e["year"] for e in lst])
         fake = json.loads(json.dumps(self.schema))
-        fake["images"]["list"][0]["digest"] = "sha256:" + "a" * 64
+        first = fake["images"]["list"][0]
+        first["digest"], first["repository"] = "sha256:" + "a" * 64, None
         with self.assertRaises(S.ImageNotPinned):
-            S.pinned_digest(fake, "windows", "2024")  # a digest alone is not pinned: the repository is needed too
-        fake["images"]["list"][0]["repository"] = "registry.example/ni/labview"
-        self.assertEqual(S.pinned_digest(fake, "windows", "2024"), "sha256:" + "a" * 64)
+            S.pinned_digest(fake, first["variant"], first["year"])  # a digest alone is not pinned: the repository is needed too
+        first["repository"] = "registry.example/ni/labview"
+        self.assertEqual(S.pinned_digest(fake, first["variant"], first["year"]), "sha256:" + "a" * 64)
         with self.assertRaises(S.ImageNotPinned):
-            S.pinned_digest(fake, "windows", "2025")
-        with self.assertRaises(S.ImageNotPinned):
-            S.pinned_digest(self.schema, "linux", "2025")  # listed but digest not recorded yet
+            S.pinned_digest(fake, "windows", "2025q3")
+        self.assertEqual(S.pinned_digest(self.schema, "linux", "2025q3"),
+                         "sha256:9938561c6460841674f9b1871d8562242f51fe9fb72a2c39c66608491edf429c")
 
     def test_secrets_have_a_screen_only_and_a_separate_repeatable_step(self):
         """INST-REQ-076, 077: secrets sit on one interactive, repeatable page; one key per PC, replaced on repeat."""
@@ -132,8 +133,8 @@ class SilentTests(Base):
             "secret-on-command-line": self.run_silent(GOOD + ["/GITHUB_TOKEN=" + FAKE_TOKEN]),
             "secret-from-file-or-stdin": self.run_silent(GOOD + ["/SECRETFILE=x"]),
             "edition-refused": self.run_silent(GOOD, caption="Microsoft Windows 11 Home"),
-            "licence-not-accepted": (S.run_silent(pinned, GOOD + ["/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2025"], "Microsoft Windows 11 Pro", self.tmp, NOW, log=(plog := [])), plog),
-            "image-not-pinned": self.run_silent(GOOD + ["/IMAGE_VARIANT=windows", "/IMAGE_YEAR=2025", "/NI_LICENCE_HELD=yes", "/ENGINE_LICENCE_ACCEPTED=yes"]),
+            "licence-not-accepted": (S.run_silent(pinned, GOOD + ["/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2025q3"], "Microsoft Windows 11 Pro", self.tmp, NOW, log=(plog := [])), plog),
+            "image-not-pinned": self.run_silent(GOOD + ["/IMAGE_VARIANT=windows", "/IMAGE_YEAR=2025q3", "/NI_LICENCE_HELD=yes", "/ENGINE_LICENCE_ACCEPTED=yes"]),
         }
         codes = []
         for kind, (code, log) in failures.items():
@@ -214,7 +215,7 @@ class SilentTests(Base):
         with self.assertRaises(S.UnknownKey):
             S.validate_values(self.schema, {"nope": "x"})
         for argv in (["/S"], ["/S", "/INSTALL_DIR= "], GOOD + ["/ALLOW_LIST=a,,b"], GOOD + ["/LABVIEW_VERSION="],
-                     GOOD + ["/PARTNER_ID=a\x01b"], GOOD + ["/IMAGE_VARIANT=linux"], GOOD + ["/IMAGE_YEAR=2024"]):
+                     GOOD + ["/PARTNER_ID=a\x01b"], GOOD + ["/IMAGE_VARIANT=linux"], GOOD + ["/IMAGE_YEAR=2026q1"]):
             code, log = self.run_silent(argv)
             self.assertEqual(code, self.schema["exit_codes"]["bad-value"], argv)
             self.assertTrue(log)
@@ -222,7 +223,7 @@ class SilentTests(Base):
 
     def test_licence_record_written_only_after_the_image_is_pinned(self):
         """Licence answers are recorded only when the whole run is otherwise accepted."""
-        code, _ = self.run_silent(GOOD + ["/IMAGE_VARIANT=windows", "/IMAGE_YEAR=2025", "/NI_LICENCE_HELD=yes", "/ENGINE_LICENCE_ACCEPTED=yes"])
+        code, _ = self.run_silent(GOOD + ["/IMAGE_VARIANT=windows", "/IMAGE_YEAR=2025q3", "/NI_LICENCE_HELD=yes", "/ENGINE_LICENCE_ACCEPTED=yes"])
         self.assertEqual(code, self.schema["exit_codes"]["image-not-pinned"])
         self.assertEqual(os.listdir(self.tmp), [])
 
@@ -260,7 +261,7 @@ class LicenceTests(Base):
         fake = json.loads(json.dumps(self.schema))
         fake["images"]["list"][1]["digest"] = "sha256:" + "b" * 64
         fake["images"]["list"][1]["repository"] = "registry.example/ni/labview"
-        img = ["/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2024"]
+        img = ["/IMAGE_VARIANT=linux", "/IMAGE_YEAR=2026q1"]
         run = lambda extra: S.run_silent(fake, GOOD + img + extra, "Windows 11 Pro", self.tmp, NOW, log=[])
         self.assertEqual(run(["/NI_LICENCE_HELD=yes"]), 35)
         self.assertEqual(run(["/NI_LICENCE_HELD=yes", "/ENGINE_LICENCE_ACCEPTED=no"]), 35)

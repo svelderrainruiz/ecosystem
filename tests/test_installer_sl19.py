@@ -755,7 +755,7 @@ class RepairGap(unittest.TestCase):
                 self.assertIn(RECORD, w.files)
                 self.assertEqual(w.pulls, ['"%s" pull %s' % (DESKTOP, self.pinned_reference())])
 
-    def pinned_reference(self, variant="linux", year="2024"):
+    def pinned_reference(self, variant="linux", year="2026q1"):
         e = next(e for e in pinned_schema()["images"]["list"] if (e["variant"], e["year"]) == (variant, year))
         return image.reference(e["repository"], e["digest"])
 

@@ -118,14 +118,16 @@ def catalogue():
         ("UserInfo::GetAccountType", "Contrib/UserInfo/UserInfo.nsi", "Contrib/UserInfo/UserInfo.c#L166",
          "Pop the account type string and compare with Admin; it is not an error-flag result.")):
         pages[item] = Page(doc, anchor, note)
-    for name in ("Label", "Text", "Password", "Checkbox", "RadioButton", "FirstRadioButton", "AdditionalRadioButton"):
+    for name in ("Label", "Text", "Password", "Checkbox", "RadioButton", "FirstRadioButton", "AdditionalRadioButton", "DropList"):
         pages["${NSD_Create" + name + "}"] = Page("Contrib/nsDialogs/Readme.html", "Contrib/nsDialogs/nsDialogs.nsh#L407",
                                                   "The created control's HWND is returned on the stack.")
     for name, line, note in (("GetText", 590, "Copies the current text to the destination variable."),
                              ("GetState", 652, "Returns the check state for comparison with BST_CHECKED."),
-                             ("Check", 663, "Sets the control to checked.")):
+                             ("Check", 663, "Sets the control to checked."),
+                             ("CB_AddString", 680, "Appends one item to a drop-down list (CB_ADDSTRING; the list is not sorted)."),
+                             ("OnChange", 477, "Calls the function when the selection changes, the control handle on the stack: Pop it.")):
         pages["${NSD_" + name + "}"] = Page("Contrib/nsDialogs/Readme.html", f"Contrib/nsDialogs/nsDialogs.nsh#L{line}", note)
-    for name, line in (("EM_LIMITTEXT", 199), ("BST_CHECKED", 131)):
+    for name, line in (("EM_LIMITTEXT", 199), ("BST_CHECKED", 131), ("CB_RESETCONTENT", 161), ("CB_SETCURSEL", 163)):
         pages["${" + name + "}"] = Page("Include/WinMessages.nsh", f"Include/WinMessages.nsh#L{line}")
 
     for name in "CMDLINE EXEDIR EXEFILE EXEPATH HWNDPARENT SYSDIR PROGRAMFILES64 APPDATA LOCALAPPDATA".split():

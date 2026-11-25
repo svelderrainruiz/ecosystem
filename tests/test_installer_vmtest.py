@@ -298,7 +298,7 @@ class DocumentTests(unittest.TestCase):
             else:
                 for part in quote.split(". "):
                     self.assertIn(part, NSIS_TEXT, quote)
-        self.assertGreaterEqual(composed, 6)
+        self.assertGreaterEqual(composed, 5)
 
     def test_a_composed_message_is_quoted_after_the_field_the_step_typed_into(self):
         """The GitHub and the GitLab address boxes give one reason: only the label, tied to the field typed into, tells them apart."""
@@ -314,7 +314,7 @@ class DocumentTests(unittest.TestCase):
                 elif ": " in m.group(1) and label in labels:
                     self.assertEqual(label, field, "T%d: %s" % (n, m.group(1)))
                     tied += 1
-        self.assertGreaterEqual(tied, 6)
+        self.assertGreaterEqual(tied, 5)
 
     def test_every_exit_code_named_in_the_prose_exists_and_t3_names_the_one_trust_sets(self):
         """Codes 3 and 38 are in footprint.json and the .nsh files, not in schema.json, so all three are read."""
@@ -761,15 +761,15 @@ class PageNameTests(unittest.TestCase):
         self.assertEqual(named, 7)
 
     def test_each_page_step_quotes_the_help_text_of_the_page_it_names(self):
-        """Every page with a help text that a step names by its first field quotes that help text in the same step; the NI docker image page has none."""
-        self.assertNotIn("Page_image", HELP)
+        """Every page with a help text that a step names by its first field quotes that help text in the same step; the NI docker image page has one too."""
+        self.assertIn("Page_image", HELP)
         quoted = set()
         for n, body in STEPS:
             for page, help_text in HELP.items():
                 if re.search(r"[Tt]he " + re.escape(self.phrase(page)) + r" \(", body) and "src: screens.nsh %s_Leave" % page in body:
                     self.assertIn('help text "%s"' % help_text, body, "T%d" % n)
                     quoted.add(page)
-        self.assertEqual(quoted, {"Page_folders", "Page_forge", "Page_network", "Page_labview", "Page_secrets", "Page_mode"})
+        self.assertEqual(quoted, {"Page_folders", "Page_forge", "Page_network", "Page_labview", "Page_image", "Page_secrets", "Page_mode"})
 
     def test_t10_names_the_page_after_it_that_is_not_shown_and_t14_the_page_a_repair_skips(self):
         after = self.ORDER[self.ORDER.index("Page_image") + 1]
