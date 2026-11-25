@@ -1,0 +1,73 @@
+{
+  "schema": "rsr/wiki-generator-config@1",
+  "repoUrl": "https://github.com/svelderrainruiz/ecosystem",
+  "branch": "main",
+  "wikiTitle": "ecosystem",
+  "description": "The requirements of the Ecosystem Runner installer, which [ecosystem](https://github.com/svelderrainruiz/ecosystem) holds and publishes as test kits. The wiki follows the ecosystem wiki standard (`rsr/ecosystem-wiki-standard@8`), with its profile in `.wiki-profile.json` (`rsr/wiki-profile@2`). The RSR consumer kit's `wiki_generate.py` writes it from the installer specification in `docs/installer-spec/`: one page per requirement (`INST-REQ`), with the specification's exact text, and one page per test case of the test plan (`INST-TC`).\n\nEvery test page is a stub: no execution evidence is recorded for this repository yet, so no page claims that a requirement is verified. Each requirement's status is the traceability matrix's, `specified`. The specification's own count line says 101 requirements; it has 102 rows, and each row has a page.\n\nThe specification was imported from ecosystem-control at commit `4d71a8a`, the commit that the published test kit `installer-test-4d71a8a09e98` was built from. Only the requirements, the traceability matrix, the test plan, the architecture and the slice plan are published: the specification's decision register, its risks and open questions, and its README are not, so links to them in the published pages do not resolve.",
+  "docs": "docs/installer-spec",
+  "exclude": [
+    "README.md",
+    "decisions.md",
+    "risks-and-open-questions.md"
+  ],
+  "srs": {
+    "path": "srs.md",
+    "style": "table",
+    "idColumn": "Id"
+  },
+  "rtm": {
+    "path": "rtm.csv",
+    "idColumn": "Requirement",
+    "columns": [
+      "Status"
+    ]
+  },
+  "testPlan": {
+    "path": "test-plan.md",
+    "idColumn": "Id"
+  },
+  "words": {
+    "srs": "SRS",
+    "rtm": "RTM"
+  },
+  "scopes": {
+    "software": {
+      "directory": "software-requirements",
+      "idPrefix": "INST-REQ",
+      "sections": [
+        {
+          "name": "Requirement",
+          "from": "table:Requirement"
+        },
+        {
+          "name": "Decision",
+          "from": "table:Decision"
+        },
+        {
+          "name": "Priority",
+          "from": "table:Prio"
+        },
+        {
+          "name": "Method",
+          "from": "table:Method"
+        },
+        {
+          "name": "Architecture",
+          "from": "rtm:Architecture"
+        },
+        {
+          "name": "TestID",
+          "from": "table:Test"
+        },
+        {
+          "name": "Status",
+          "from": "rtm:Status"
+        }
+      ]
+    },
+    "test": {
+      "directory": "tests",
+      "idPrefix": "INST-TC"
+    }
+  }
+}
