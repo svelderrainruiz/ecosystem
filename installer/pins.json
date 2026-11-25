@@ -1,0 +1,24 @@
+{
+  "nsis": {
+    "version": "3.10",
+    "url": "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip",
+    "sha256": "fcdce3229717a2a148e7cda0ab5bdb667f39d8fb33ede1da8dabc336bd5ad110",
+    "root": "nsis-3.10"
+  },
+  "compile": {
+    "defines": {
+      "INSTALLER_UNICODE": "1"
+    },
+    "script_commands": [
+      "Unicode true",
+      "SetDateSave off",
+      "SetCompressor /SOLID lzma",
+      "SetCompressorDictSize 8"
+    ],
+    "flags": ["-V2", "-INPUTCHARSET", "UTF8"]
+  },
+  "runner_payload": {
+    "sha256": null
+  },
+  "plugins": {}
+}

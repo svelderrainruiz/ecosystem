@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "folder": {
+    "path": "$APPDATA\\EcosystemRunner",
+    "context": "SetShellVarContext all (the machine's program-data location)"
+  },
+  "service": {
+    "name": "EcosystemRunner",
+    "account": "NT SERVICE\\EcosystemRunner"
+  },
+  "payload": {
+    "path": "$APPDATA\\EcosystemRunner\\program\\runner.exe",
+    "define": "RUNNER_PAYLOAD",
+    "test_define": "RUNNER_TEST_BUILD"
+  },
+  "runner_state": {
+    "mode_file": "$APPDATA\\EcosystemRunner\\runner-mode.json",
+    "forge_file": "$APPDATA\\EcosystemRunner\\runner-forge.json"
+  },
+  "licence_record": {
+    "file": "$APPDATA\\EcosystemRunner\\licence-record.json"
+  },
+  "uninstall_entry": {
+    "key": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EcosystemRunner"
+  },
+  "per_user_exceptions": [
+    {
+      "path": "$LOCALAPPDATA\\EcosystemInstaller",
+      "reason": "SL-2 stored signer fingerprint, written before any elevation; not part of the machine footprint"
+    },
+    {
+      "path": "$TrustStoreFile",
+      "reason": "the same stored fingerprint file, addressed through its variable"
+    }
+  ],
+  "ps_input_variables": [
+    "$EditionFile"
+  ],
+  "rights": [
+    "create and start one Windows service under a dedicated virtual service account",
+    "write one folder under the machine's program-data location",
+    "write one uninstall entry"
+  ],
+  "exit_codes": {
+    "not-elevated": 38,
+    "folder-not-ours": 39,
+    "uninstall-stopped": 40,
+    "major-version-mismatch": 41,
+    "update-restored": 42,
+    "update-not-applied": 43,
+    "restore-failed": 44,
+    "state-invalid": 45,
+    "image-pull-failed": 46,
+    "uninstaller-write-failed": 48,
+    "state-write-failed": 49
+  },
+  "exec_allowed": [
+    {
+      "file": "image.nsh",
+      "function": "Image_Pull",
+      "commands": [
+        "\"$ImgEngine\" info --format {{.OSType}}",
+        "\"$ImgEngine\" pull $ImgRef"
+      ]
+    },
+    {
+      "file": "uninstall.nsh",
+      "function": "un.Uninstall_RemoveService",
+      "commands": [
+        "\"$SYSDIR\\sc.exe\" stop EcosystemRunner",
+        "\"$SYSDIR\\sc.exe\" query EcosystemRunner",
+        "\"$SYSDIR\\sc.exe\" delete EcosystemRunner"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_CreateService",
+      "commands": [
+        "\"$SYSDIR\\sc.exe\" create EcosystemRunner binPath= \"$APPDATA\\EcosystemRunner\\program\\runner.exe\" obj= \"NT SERVICE\\EcosystemRunner\" start= auto",
+        "\"$SYSDIR\\sc.exe\" sidtype EcosystemRunner unrestricted",
+        "\"$SYSDIR\\icacls.exe\" \"$APPDATA\\EcosystemRunner\" /grant:r *S-1-5-80-1994812370-2417282942-4224635210-1542273099-3328997366:(OI)(CI)RX",
+        "\"$SYSDIR\\sc.exe\" start EcosystemRunner"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_QueryState",
+      "commands": [
+        "\"$SYSDIR\\sc.exe\" query EcosystemRunner"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_StopAndWait",
+      "commands": [
+        "\"$SYSDIR\\sc.exe\" stop EcosystemRunner"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_StartAndWait",
+      "commands": [
+        "\"$SYSDIR\\sc.exe\" start EcosystemRunner"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_Cleanup",
+      "commands": [
+        "\"$SYSDIR\\sc.exe\" stop EcosystemRunner",
+        "\"$SYSDIR\\sc.exe\" delete EcosystemRunner"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_FolderStatus",
+      "commands": [
+        "\"$SYSDIR\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -NonInteractive -Command \"$$p='$APPDATA\\EcosystemRunner';if(!(Test-Path -LiteralPath $$p)){'absent';exit}$$i=Get-Item -LiteralPath $$p -Force;$$o=(Get-Acl -LiteralPath $$p).GetOwner([Security.Principal.SecurityIdentifier]).Value;if(!$$i.PSIsContainer -or ($$i.Attributes -band 1024) -or ($$o -ne 'S-1-5-18' -and $$o -ne 'S-1-5-32-544')){'foreign';exit}if(@(Get-ChildItem -LiteralPath $$p -Force).Count -eq 0){'fresh';exit}$$s=Join-Path $$p 'installer-state.json';try{$$f=Get-Item -LiteralPath $$s -Force;$$j=Get-Content -LiteralPath $$s -Raw|ConvertFrom-Json;if(!($$f.Attributes -band 1024) -and $$j.schema_version -eq 1 -and $$j.installer_version){'ours';exit}}catch{}'foreign'\""
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_FolderAudit",
+      "commands": [
+        "\"$SYSDIR\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -NonInteractive -Command \"$$ErrorActionPreference='Stop';$$p='$APPDATA\\EcosystemRunner';$$b=0;$$w=0;$$n=0;$$q=New-Object System.Collections.Queue;$$q.Enqueue($$p);while($$q.Count){$$d=$$q.Dequeue();foreach($$c in @(Get-ChildItem -LiteralPath $$d -Force)){$$n++;if($$c.Attributes -band 1024){$$b=1;continue};if(!$$c.PSIsContainer -and $$c.LinkType -eq 'HardLink'){$$b=1};$$o=(Get-Acl -LiteralPath $$c.FullName).GetOwner([Security.Principal.SecurityIdentifier]).Value;if($$o -ne 'S-1-5-18' -and $$o -ne 'S-1-5-32-544'){$$w=1};if($$c.PSIsContainer){$$q.Enqueue($$c.FullName)}}}if($$b){'links'}elseif($$n -eq 0){'empty'}elseif($$w){'owners'}else{'clean'}\""
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_FolderReset",
+      "commands": [
+        "\"$SYSDIR\\icacls.exe\" \"$APPDATA\\EcosystemRunner\" /setowner *S-1-5-32-544 /T /L",
+        "\"$SYSDIR\\icacls.exe\" \"$APPDATA\\EcosystemRunner\\*\" /reset /T /L"
+      ]
+    },
+    {
+      "file": "winsys.nsh",
+      "function": "Winsys_FolderLock",
+      "commands": [
+        "\"$SYSDIR\\icacls.exe\" \"$APPDATA\\EcosystemRunner\" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F /grant:r *S-1-5-32-544:(OI)(CI)F"
+      ]
+    }
+  ],
+  "elevated_markers": [
+    "runas",
+    "SetShellVarContext all",
+    "HKLM",
+    "HKEY_LOCAL_MACHINE",
+    "sc.exe",
+    "New-Service"
+  ]
+}

@@ -1,0 +1,5 @@
+[project]
+name = "ecosystem-control"
+version = "0.0.0"
+description = "Workstation tooling; standard library only, run on the one pinned CPython (see pyenv/README.md)"
+requires-python = ">=3.14"

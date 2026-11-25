@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: unit tests
+    runs-on: ubuntu-24.04 # 3.14.4 has no setup-python build for 26.04 (ubuntu-latest)
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: The interpreter is the pinned patch version
+        run: test "$(python3 --version)" = "Python $(cat .python-version)"
+      - name: Run the tests (Python standard library only; a ResourceWarning fails the step)
+        shell: bash
+        run: |
+          set -o pipefail
+          export TMPDIR="$RUNNER_TEMP/suite-tmp"
+          mkdir "$TMPDIR"
+          PYTHONWARNINGS=error::ResourceWarning python3 -m unittest discover -s tests -t . -v 2>&1 | tee unit-tests.log
+          grep -Eq '^Ran [0-9]+ tests? in ' unit-tests.log || { echo "the log has no unittest summary line"; exit 1; }
+          if grep -n 'ResourceWarning:' unit-tests.log; then echo "the run printed a ResourceWarning"; exit 1; fi
+          left=$(find "$TMPDIR" -mindepth 1 -maxdepth 1 -printf x) || { echo "cannot read $TMPDIR"; exit 1; }
+          if [ -n "$left" ]; then echo "the suite left files in $TMPDIR:"; ls -la "$TMPDIR"; exit 1; fi
+      - name: The installer footprint check
+        run: python3 -m installer.footprint check
+      - name: The installer schema check
+        run: python3 -m installer.schema check
+      - name: The installer build check (Git and a container engine present; prints versions only)
+        run: python3 -m installer.build check

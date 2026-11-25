@@ -1,0 +1,15 @@
+# Paths the installer may read (INST-REQ-031). One per line; '#' starts a comment.
+# Anything read that is not here, or under one of these, fails the source scan in installer/footprint.py.
+$INSTDIR
+$EXEDIR
+$EXEPATH
+$CMDLINE
+$LOCALAPPDATA\EcosystemInstaller
+$APPDATA\EcosystemRunner
+$TrustStoreFile
+$PROGRAMFILES64\Docker\Docker\resources\bin\docker.exe
+$PROGRAMFILES64\Docker\docker.exe
+HKLM\Software\Microsoft\Windows NT\CurrentVersion\EditionID
+HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\EcosystemRunner
+HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation\ActiveTimeBias
+HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation\TimeZoneKeyName
