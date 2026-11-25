@@ -859,11 +859,12 @@ Function Page_mode
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateFirstRadioButton} 0u 4u 100% 12u "Local only (no forge)"
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Choose what this PC does: local only (no forge), a GitHub runner or a GitLab runner. Choose one, then select Next."
+  ${NSD_CreateFirstRadioButton} 0u 24u 100% 12u "Local only (no forge)"
   Pop $ctl_mode_local
-  ${NSD_CreateAdditionalRadioButton} 0u 20u 100% 12u "GitHub runner"
+  ${NSD_CreateAdditionalRadioButton} 0u 40u 100% 12u "GitHub runner"
   Pop $ctl_mode_github
-  ${NSD_CreateAdditionalRadioButton} 0u 36u 100% 12u "GitLab runner"
+  ${NSD_CreateAdditionalRadioButton} 0u 56u 100% 12u "GitLab runner"
   Pop $ctl_mode_gitlab
   nsDialogs::Show
 FunctionEnd
@@ -932,12 +933,13 @@ Function Page_folders
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateLabel} 0u 4u 100% 8u "Install folder"
-  ${NSD_CreateText} 0u 12u 100% 12u ""
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Type an install folder and a work folder. Each typed folder is checked when you select Next; an empty box is skipped."
+  ${NSD_CreateLabel} 0u 24u 100% 8u "Install folder"
+  ${NSD_CreateText} 0u 33u 100% 12u ""
   Pop $ctl_install_dir
   SendMessage $ctl_install_dir ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 22u 100% 8u "Work folder"
-  ${NSD_CreateText} 0u 30u 100% 12u ""
+  ${NSD_CreateLabel} 0u 48u 100% 8u "Work folder"
+  ${NSD_CreateText} 0u 57u 100% 12u ""
   Pop $ctl_work_dir
   SendMessage $ctl_work_dir ${EM_LIMITTEXT} 1023 0
   nsDialogs::Show
@@ -967,20 +969,21 @@ Function Page_forge
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateLabel} 0u 4u 100% 8u "GitHub address"
-  ${NSD_CreateText} 0u 12u 100% 12u ""
+  ${NSD_CreateLabel} 0u 0u 100% 20u "The GitHub or GitLab address (https:// only), the partner or organisation ID and the allow-list. An empty box is skipped."
+  ${NSD_CreateLabel} 0u 24u 100% 8u "GitHub address"
+  ${NSD_CreateText} 0u 33u 100% 12u ""
   Pop $ctl_github_url
   SendMessage $ctl_github_url ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 22u 100% 8u "GitLab address"
-  ${NSD_CreateText} 0u 30u 100% 12u ""
+  ${NSD_CreateLabel} 0u 48u 100% 8u "GitLab address"
+  ${NSD_CreateText} 0u 57u 100% 12u ""
   Pop $ctl_gitlab_url
   SendMessage $ctl_gitlab_url ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 40u 100% 8u "Partner or organisation ID"
-  ${NSD_CreateText} 0u 48u 100% 12u ""
+  ${NSD_CreateLabel} 0u 72u 100% 8u "Partner or organisation ID"
+  ${NSD_CreateText} 0u 81u 100% 12u ""
   Pop $ctl_partner_id
   SendMessage $ctl_partner_id ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 58u 100% 8u "Allow-list (comma separated)"
-  ${NSD_CreateText} 0u 66u 100% 12u ""
+  ${NSD_CreateLabel} 0u 96u 100% 8u "Allow-list (comma separated)"
+  ${NSD_CreateText} 0u 105u 100% 12u ""
   Pop $ctl_allow_list
   SendMessage $ctl_allow_list ${EM_LIMITTEXT} 1023 0
   nsDialogs::Show
@@ -1026,12 +1029,13 @@ Function Page_network
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateLabel} 0u 4u 100% 8u "Proxy address"
-  ${NSD_CreateText} 0u 12u 100% 12u ""
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Only if this PC needs them: a proxy address (http:// or https://) and DNS servers, separated by commas. An empty box is skipped."
+  ${NSD_CreateLabel} 0u 24u 100% 8u "Proxy address"
+  ${NSD_CreateText} 0u 33u 100% 12u ""
   Pop $ctl_http_proxy
   SendMessage $ctl_http_proxy ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 22u 100% 8u "DNS servers (comma separated)"
-  ${NSD_CreateText} 0u 30u 100% 12u ""
+  ${NSD_CreateLabel} 0u 48u 100% 8u "DNS servers (comma separated)"
+  ${NSD_CreateText} 0u 57u 100% 12u ""
   Pop $ctl_dns_servers
   SendMessage $ctl_dns_servers ${EM_LIMITTEXT} 1023 0
   nsDialogs::Show
@@ -1061,8 +1065,9 @@ Function Page_labview
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateLabel} 0u 4u 100% 8u "LabVIEW version"
-  ${NSD_CreateText} 0u 12u 100% 12u ""
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Type the LabVIEW version this PC uses. An empty box is skipped."
+  ${NSD_CreateLabel} 0u 24u 100% 8u "LabVIEW version"
+  ${NSD_CreateText} 0u 33u 100% 12u ""
   Pop $ctl_labview_version
   SendMessage $ctl_labview_version ${EM_LIMITTEXT} 1023 0
   nsDialogs::Show
@@ -1132,9 +1137,10 @@ Function Page_licences
     Abort
   ${EndIf}
   !insertmacro Dialog_Create
-  ${NSD_CreateCheckbox} 0u 4u 100% 12u "Yes, we hold a development licence (NI licence conditions)"
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Shown because an NI docker image was chosen. Tick both licence boxes to continue."
+  ${NSD_CreateCheckbox} 0u 24u 100% 12u "Yes, we hold a development licence (NI licence conditions)"
   Pop $ctl_ni_licence_held
-  ${NSD_CreateCheckbox} 0u 22u 100% 12u "Yes, we accept the container engine licence conditions"
+  ${NSD_CreateCheckbox} 0u 48u 100% 12u "Yes, we accept the container engine licence conditions"
   Pop $ctl_engine_licence_accepted
   nsDialogs::Show
 FunctionEnd
@@ -1164,16 +1170,17 @@ Function Page_secrets
     GetDlgItem $0 $HWNDPARENT 3
     EnableWindow $0 0
   ${EndIf}
-  ${NSD_CreateLabel} 0u 4u 100% 8u "GitHub registration token"
-  ${NSD_CreatePassword} 0u 12u 100% 12u ""
+  ${NSD_CreateLabel} 0u 0u 100% 20u "Tokens and passwords are typed here only, never on the command line. Fill in only the ones you need; an empty box is skipped."
+  ${NSD_CreateLabel} 0u 24u 100% 8u "GitHub registration token"
+  ${NSD_CreatePassword} 0u 33u 100% 12u ""
   Pop $ctl_github_token
   SendMessage $ctl_github_token ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 22u 100% 8u "GitLab runner token"
-  ${NSD_CreatePassword} 0u 30u 100% 12u ""
+  ${NSD_CreateLabel} 0u 48u 100% 8u "GitLab runner token"
+  ${NSD_CreatePassword} 0u 57u 100% 12u ""
   Pop $ctl_gitlab_token
   SendMessage $ctl_gitlab_token ${EM_LIMITTEXT} 1023 0
-  ${NSD_CreateLabel} 0u 40u 100% 8u "Image registry password"
-  ${NSD_CreatePassword} 0u 48u 100% 12u ""
+  ${NSD_CreateLabel} 0u 72u 100% 8u "Image registry password"
+  ${NSD_CreatePassword} 0u 81u 100% 12u ""
   Pop $ctl_registry_password
   SendMessage $ctl_registry_password ${EM_LIMITTEXT} 1023 0
   nsDialogs::Show

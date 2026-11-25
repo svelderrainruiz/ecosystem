@@ -124,7 +124,11 @@ class DocFix(unittest.TestCase):
             self.assertEqual(w.run(".onInit"), 38 if silent else None)
             self.assertEqual(w.var["TrustSigner"], trust.parse_fingerprint(signer))
             self.assertEqual(w.files[STORE], (stored or signer.lower()) + "\n")
-            self.assertEqual(len(w.boxes), 0 if stored else 1)
+            # The interactive first run shows the experimental warning (issue 329), then the one signer box; the silent runs show nothing.
+            self.assertEqual(len(w.boxes), 0 if stored else 2)
+            if not stored:
+                self.assertTrue(w.boxes[0].startswith("This is an EXPERIMENTAL installer (test build)."), w.boxes)
+                self.assertTrue(w.boxes[1].startswith("First run. The signer fingerprint is:"), w.boxes)
 
     def test_signer_with_an_extra_hex_digit_is_not_a_valid_first_run(self):
         w = AuditWorld(silent=False, admin=False)

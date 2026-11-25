@@ -5,14 +5,14 @@
     "prefix": "/"
   },
   "pages": [
-    {"id": "mode", "title": "What this PC does"},
-    {"id": "folders", "title": "Folders"},
-    {"id": "forge", "title": "Forge addresses and allow-lists"},
-    {"id": "network", "title": "Proxy and DNS"},
-    {"id": "labview", "title": "LabVIEW"},
+    {"id": "mode", "title": "What this PC does", "help": "Choose what this PC does: local only (no forge), a GitHub runner or a GitLab runner. Choose one, then select Next."},
+    {"id": "folders", "title": "Folders", "help": "Type an install folder and a work folder. Each typed folder is checked when you select Next; an empty box is skipped."},
+    {"id": "forge", "title": "Forge addresses and allow-lists", "help": "The GitHub or GitLab address (https:// only), the partner or organisation ID and the allow-list. An empty box is skipped."},
+    {"id": "network", "title": "Proxy and DNS", "help": "Only if this PC needs them: a proxy address (http:// or https://) and DNS servers, separated by commas. An empty box is skipped."},
+    {"id": "labview", "title": "LabVIEW", "help": "Type the LabVIEW version this PC uses. An empty box is skipped."},
     {"id": "image", "title": "NI docker image"},
-    {"id": "licences", "title": "Licence conditions", "only_when": "image_chosen"},
-    {"id": "secrets", "title": "Add secrets", "interactive_only": true, "repeatable": true}
+    {"id": "licences", "title": "Licence conditions", "only_when": "image_chosen", "help": "Shown because an NI docker image was chosen. Tick both licence boxes to continue."},
+    {"id": "secrets", "title": "Add secrets", "interactive_only": true, "repeatable": true, "help": "Tokens and passwords are typed here only, never on the command line. Fill in only the ones you need; an empty box is skipped."}
   ],
   "inputs": [
     {"id": "mode", "label": "What this PC does", "kind": "choice", "page": "mode", "choices": ["local", "github", "gitlab"], "choice_labels": {"local": "Local only (no forge)", "github": "GitHub runner", "gitlab": "GitLab runner"}, "setter": "Runner_Set", "req": ["INST-REQ-020", "INST-REQ-034", "INST-REQ-035", "INST-REQ-036"]},

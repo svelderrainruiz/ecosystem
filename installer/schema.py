@@ -59,6 +59,10 @@ class CommandLineTooLong(SchemaError):
 TEXT_LIMIT = 1023
 # NSIS keeps at most 1023 characters of $CMDLINE (the cut is silent, REPORT L2 C10): a line of 1023 or more is refused with exit 50 (#136).
 COMMAND_LINE_LIMIT = 1023
+# A page with a help text (issue 329): the help label at the top holds two lines; then each field is a label at y (8u) and its box at y+9 (12u),
+# and the next field starts at y+24, so nothing overlaps. A page without help keeps the old 18u pitch, where a box overlaps the next label by 2u.
+HELP_HEIGHT = 20
+FIELD_PITCH = 24
 
 def load_schema(path=SCHEMA_PATH):
     return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -101,14 +105,14 @@ def setter_name(spec, choice):
     return spec["setter"] + choice.capitalize()
 
 
-def _wired_page(spec, schema):
+def _wired_page(spec, schema, top=4):
     """Radio group, Leave callback (the choice calls its setter; no choice stays on the page) and the silent selection."""
     i, ctl = spec["id"], "ctl_%s_" % spec["id"]
     labels = spec.get("choice_labels", {})
     out = []
     for n, c in enumerate(spec["choices"]):
         macro = "${NSD_CreateFirstRadioButton}" if n == 0 else "${NSD_CreateAdditionalRadioButton}"
-        out += ['  %s 0u %du 100%% 12u "%s"' % (macro, 4 + n * 16, labels.get(c, c).replace('"', "'")), "  Pop $%s%s" % (ctl, c)]
+        out += ['  %s 0u %du 100%% 12u "%s"' % (macro, top + n * 16, labels.get(c, c).replace('"', "'")), "  Pop $%s%s" % (ctl, c)]
     out += ["  nsDialogs::Show", "FunctionEnd", "", "Function Page_%s_Leave" % i, '  StrCpy $in_%s ""' % i]
     for c in spec["choices"]:
         out += ["  ${NSD_GetState} $%s%s $0" % (ctl, c), "  ${If} $0 == ${BST_CHECKED}", '    StrCpy $in_%s "%s"' % (i, c), "  ${EndIf}"]
@@ -390,18 +394,22 @@ def generate_nsh(schema):
         if any(i["kind"] == "secret" for i in fields):
             out += ["  ; the elevated copy shows nothing before this page, and Back from the first page ends the installer window: the button is off there",
                     "  ${If} $carried == 1", "    GetDlgItem $0 $HWNDPARENT 3", "    EnableWindow $0 0", "  ${EndIf}"]
+        top, pitch, gap = 4, 18, 8
+        if p.get("help"):
+            out.append('  ${NSD_CreateLabel} 0u 0u 100%% %du "%s"' % (HELP_HEIGHT, p["help"].replace('"', "'")))
+            top, pitch, gap = HELP_HEIGHT + 4, FIELD_PITCH, 9
         if any(i.get("setter") for i in fields):
-            out += _wired_page(fields[0], schema)
+            out += _wired_page(fields[0], schema, top)
             continue
         for n, i in enumerate(fields):
-            y = 4 + n * 18
+            y = top + n * pitch
             lab = i["label"].replace('"', "'")
             if i["kind"] == "licence":
                 out.append('  ${NSD_CreateCheckbox} 0u %du 100%% 12u "%s"' % (y, lab))
             else:
                 out.append('  ${NSD_CreateLabel} 0u %du 100%% 8u "%s"' % (y, lab))
                 create = "${NSD_CreatePassword}" if i["kind"] == "secret" else "${NSD_CreateText}"
-                out.append("  %s 0u %du 100%% 12u \"\"" % (create, y + 8))
+                out.append("  %s 0u %du 100%% 12u \"\"" % (create, y + gap))
             out.append("  Pop $ctl_%s" % i["id"])
             if i["kind"] != "licence":
                 out.append("  SendMessage $ctl_%s ${EM_LIMITTEXT} %d 0" % (i["id"], TEXT_LIMIT))

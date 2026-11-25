@@ -95,9 +95,16 @@ def reasons(name, seen=()):
     return found
 
 
+HELP = {"Page_" + p["id"]: p["help"] for p in json.loads(text_of(INST / "schema.json"))["pages"] if "help" in p}
+
+
 def first_field(page):
-    """The text of the first control a page function creates. A page has no heading, so this is what names it."""
-    return re.search(r'\$\{NSD_Create\w+\}[^\n"]*"([^"\n]*)"', FUNCTIONS[page]).group(1)
+    """The text of the first control a page function creates after its help text (issue 329). A page has no heading, so this is what names it."""
+    texts = re.findall(r'\$\{NSD_Create\w+\}[^\n"]*"([^"\n]*)"', FUNCTIONS[page])
+    if page in HELP:
+        assert texts[0] == HELP[page], page
+        texts = texts[1:]
+    return texts[0]
 
 
 # What vm-state.ps1 uses, and so all it may use: it only reads. Anything outside these sets fails, aliases included (gc, ri, iex, ...).
@@ -753,6 +760,17 @@ class PageNameTests(unittest.TestCase):
                 named += 1
         self.assertEqual(named, 7)
 
+    def test_each_page_step_quotes_the_help_text_of_the_page_it_names(self):
+        """Every page with a help text that a step names by its first field quotes that help text in the same step; the NI docker image page has none."""
+        self.assertNotIn("Page_image", HELP)
+        quoted = set()
+        for n, body in STEPS:
+            for page, help_text in HELP.items():
+                if re.search(r"[Tt]he " + re.escape(self.phrase(page)) + r" \(", body) and "src: screens.nsh %s_Leave" % page in body:
+                    self.assertIn('help text "%s"' % help_text, body, "T%d" % n)
+                    quoted.add(page)
+        self.assertEqual(quoted, {"Page_folders", "Page_forge", "Page_network", "Page_labview", "Page_secrets", "Page_mode"})
+
     def test_t10_names_the_page_after_it_that_is_not_shown_and_t14_the_page_a_repair_skips(self):
         after = self.ORDER[self.ORDER.index("Page_image") + 1]
         self.assertEqual(after, "Page_licences")
@@ -765,8 +783,12 @@ class PageNameTests(unittest.TestCase):
         self.assertGreaterEqual(len(titles), 8)
         for title in titles:
             self.assertNotIn('"%s"' % title, DOC)
-        for text in ("MUI_HEADER_TEXT", "SubCaption", "Caption "):
+        for text in ("MUI_HEADER_TEXT", "SubCaption"):
             self.assertNotIn(text, NSIS_TEXT)
+        # The window caption is one text for the whole wizard (the experimental warning, issue 329), not a heading of a page.
+        self.assertEqual(re.findall(r"^\s*(\w*Caption)\b(.*)$", NSIS_TEXT, re.M),
+                         [("Caption", ' "Ecosystem Runner Setup (EXPERIMENTAL)"'), ("UninstallCaption", ' "Ecosystem Runner Uninstall (EXPERIMENTAL)"')])
+        self.assertEqual([l for l in NSIS_TEXT.splitlines() if l.startswith("Page ") and '"' in l], [])
         self.assertIn("The code sets no heading on its pages, so each page is named by its first field.", DOC)
 
 
