@@ -840,6 +840,7 @@ def _sl16b_world_init(self, *a, exec_codes=None, shell_fails=False, stack_answer
     self.execs, self.exec_codes = [], list(exec_codes or [])
     self.stack_execs, self.stack_answers = [], list(stack_answers or [])
     self.windows = {}
+    self.combos, self.callbacks = {}, {}
     self.var["PROGRAMFILES64"] = "C:\\Program Files"
 
 
@@ -864,6 +865,25 @@ def _sl16b_step(self, t, labels):
         return None
     if op == "getdlgitem":
         self.set(t[1], "%s/%s" % (self.expand(t[2]) or "parent", self.expand(t[3])))
+        return None
+    # #329 drop-down lists, keyed by the variable that holds the handle (as texts is): CB_ADDSTRING appends (the list has no CBS_SORT),
+    # CB_RESETCONTENT empties the list and its selection, CB_SETCURSEL selects by index and clears the selection for an index out of range;
+    # the selected item is what NSD_GetText reads. NSD_OnChange only records the callback: a test calls it as nsDialogs would.
+    if op == "${nsd_cb_addstring}":
+        self.combos.setdefault(t[1].lstrip("$"), []).append(self.expand(t[2]))
+        return None
+    if op == "${nsd_onchange}":
+        self.callbacks[t[1].lstrip("$")] = t[2]
+        return None
+    if op == "sendmessage" and t[2] in ("${CB_RESETCONTENT}", "${CB_SETCURSEL}"):
+        ctl = t[1].lstrip("$")
+        items = self.combos.setdefault(ctl, [])
+        if t[2] == "${CB_RESETCONTENT}":
+            items.clear()
+            self.texts[ctl] = ""
+        else:
+            n = int(self.expand(t[3]))
+            self.texts[ctl] = items[n] if 0 <= n < len(items) else ""
         return None
     if op == "enablewindow":
         self.windows[self.expand(t[1])] = int(self.expand(t[2]))

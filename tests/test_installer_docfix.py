@@ -62,8 +62,8 @@ class DocFix(unittest.TestCase):
 
     def test_b_refusal_never_creates_and_appends_only_to_existing_machine_log(self):
         user_log = ROAMING + r"\EcosystemRunner\steps.jsonl"
-        for cmd, rc in (("/MODE=bad", 30), ("/BOGUS", 31), ("/IMAGE_VARIANT=windows /IMAGE_YEAR=2024", 35),
-                        ("/IMAGE_VARIANT=windows /IMAGE_YEAR=2024", 36)):
+        for cmd, rc in (("/MODE=bad", 30), ("/BOGUS", 31), ("/IMAGE_VARIANT=windows /IMAGE_YEAR=2026q1", 35),
+                        ("/IMAGE_VARIANT=windows /IMAGE_YEAR=2025q3", 36)):
             for existing in ({}, {ROOT + r"\.dir": ""}, {LOG: '{"old":1}\n'}):
                 with self.subTest(rc=rc, existing=list(existing)):
                     w = AuditWorld(files={user_log: "untouched", **existing}, admin=False)

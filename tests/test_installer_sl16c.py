@@ -170,7 +170,7 @@ class ValuesKeepTheirCase(unittest.TestCase):
             "gitlab_url": "https://GitLab.Example.com/Group/Project", "http_proxy": "http://Proxy.Example.com:3128",
             "partner_id": "Acme-Partner-01", "labview_version": "2024 Q3", "allow_list": "Alpha.Example.com,Beta.Example.com",
             "dns_servers": "Dns.Example.com,Other.Example.com", "github_token": "ghs_AbCd1234"}
-    LOWER = {"mode": "GitHub", "ni_licence_held": "YES", "engine_licence_accepted": "Yes", "image_variant": "LINUX", "image_year": "2025"}
+    LOWER = {"mode": "GitHub", "ni_licence_held": "YES", "engine_licence_accepted": "Yes", "image_variant": "LINUX", "image_year": "2025q3"}
 
     def test_text_path_url_list_and_secret_values_keep_their_case_and_licence_and_choice_values_do_not(self):
         values = dict(self.KEEP, **self.LOWER)

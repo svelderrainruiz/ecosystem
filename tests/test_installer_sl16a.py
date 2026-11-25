@@ -62,13 +62,14 @@ TABLE = [
     ("labview_version", "2024 Q3", True), ("labview_version", 'x"y', False),
     ("image_variant", "windows", True), ("image_variant", "WINDOWS", True), ("image_variant", "bsd", False),
     ("image_variant", "both", False),
-    ("image_year", "2024", True), ("image_year", "1999", False),
+    ("image_year", "2026q1", True), ("image_year", "1999", False),
     ("ni_licence_held", "yes", True), ("ni_licence_held", "No", True), ("ni_licence_held", "maybe", False),
     ("github_token", "ghs_abc123", True), ("github_token", "a b", False), ("github_token", 'a"b', False), ("github_token", "a'b", False), ("github_token", "a`b", False),
     ("github_token", "a\\b", False), ("github_token", "a\tb", False),
     ("gitlab_token", "glrt-xyz", True), ("gitlab_token", "x y", False), ("registry_password", "p@ss/word", True), ("registry_password", "p ass", False),
 ]
-COMPANION = {"image_variant": ("image_year", "2024"), "image_year": ("image_variant", "windows")}
+COMPANION = {"image_variant": ("image_year", "2026q1"), "image_year": ("image_variant", "windows")}
+SHOWN = {e["year"]: e["label"] for e in SCHEMA["images"]["list"]}  # the version list shows the label of the version
 
 
 def python_says(i, v):
@@ -107,6 +108,8 @@ class OneRuleTwoWriters(unittest.TestCase):
                 texts = {i: v}
                 if i in COMPANION:
                     texts[COMPANION[i][0]] = COMPANION[i][1]
+                if "image_year" in texts:
+                    texts["image_year"] = SHOWN.get(texts["image_year"], texts["image_year"])
                 w, code = leave(BY_ID[i]["page"], texts)
                 self.assertEqual(code, None if good else "abort", (i, v, w.boxes))
                 self.assertEqual(len(w.boxes), 0 if good else 1)
@@ -117,19 +120,21 @@ class OneRuleTwoWriters(unittest.TestCase):
         self.assertTrue(all(BY_ID[k].get("no_blank") for k in ("github_token", "gitlab_token", "registry_password")))
 
     def test_a_choice_is_compared_without_case_and_stored_in_lower_case(self):
-        w, code = init("/S /IMAGE_VARIANT=WiNdOwS /IMAGE_YEAR=2024 /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=yes")
+        w, code = init("/S /IMAGE_VARIANT=WiNdOwS /IMAGE_YEAR=2026q1 /NI_LICENCE_HELD=yes /ENGINE_LICENCE_ACCEPTED=yes")
         self.assertEqual((code, w.var["in_image_variant"]), (None, "windows"))
-        w, code = leave("image", {"image_variant": "LINUX", "image_year": "2024"})
+        w, code = leave("image", {"image_variant": "LINUX", "image_year": "2026 Q1"})
         self.assertEqual((code, w.var["in_image_variant"]), (None, "linux"))
 
     def test_image_variant_and_year_come_together_on_both_paths(self):
-        for cmd in ("/S /IMAGE_VARIANT=windows", "/S /IMAGE_YEAR=2025"):
+        for cmd in ("/S /IMAGE_VARIANT=windows", "/S /IMAGE_YEAR=2025q3"):
             self.assertEqual(init(cmd)[1], BAD, cmd)
             with self.assertRaises(S.BadValue):
                 S.validate_values(SCHEMA, {**S.parse_silent(SCHEMA, cmd.split()), "install_dir": "x"})
-        for texts in ({"image_variant": "windows"}, {"image_year": "2025"}):
+        for texts in ({"image_variant": "windows"}, {"image_variant": "windows", "image_year": "2025 Q3"}):
             w, code = leave("image", texts)
             self.assertEqual((code, len(w.boxes)), ("abort", 1), texts)
+        w, code = leave("image", {"image_year": "2025 Q3"})  # (none): the version list is empty, nothing is read from it
+        self.assertEqual((code, w.boxes, w.var["in_image_year"]), (None, [], ""))
         w, code = leave("image", {})
         self.assertEqual((code, w.boxes), (None, []))
 

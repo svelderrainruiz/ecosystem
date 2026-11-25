@@ -140,7 +140,7 @@ class LoopsEnd(unittest.TestCase):
 
 
 class ValuesAreNormalised(unittest.TestCase):
-    VALUES = {"install_dir": "C:\\x", "ni_licence_held": "YES", "engine_licence_accepted": "Yes", "image_variant": "LINUX", "image_year": "2024"}
+    VALUES = {"install_dir": "C:\\x", "ni_licence_held": "YES", "engine_licence_accepted": "Yes", "image_variant": "LINUX", "image_year": "2026q1"}
 
     def test_the_two_licence_answers_and_the_choices_are_stored_in_lower_case(self):
         v = dict(self.VALUES)
@@ -164,7 +164,7 @@ class ValuesAreNormalised(unittest.TestCase):
             e["digest"] = "sha256:" + "a" * 64
             e["repository"] = "registry.example/ni/labview"
         with self.assertRaises(S.ImageNotPinned):
-            S.pinned_digest(pinned, "LINUX", "2024")
+            S.pinned_digest(pinned, "LINUX", "2026q1")
 
 
 class EditControlsAreLimited(unittest.TestCase):

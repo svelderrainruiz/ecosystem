@@ -2,7 +2,7 @@
 The window caption and the branding line (bottom of every page, between Cancel and < Back) are fixed texts of main.nsi. The box is the first box of an interactive run, in front of
 every trust box; a silent run and the elevated copy that its first window started ($carried 1) never show it, and no exit code changes.
 The box sequence runs the real .onInit in the test interpreter (tests/nsis_interp.py); mutants of the script text check that the checks can fail.
-The rehearsal asked for more ("Overlapping text, no help"): every generated page but the NI docker image page starts with a help text, and no two of its controls overlap."""
+The rehearsal asked for more ("Overlapping text, no help"): every generated page starts with a help text, and no two of its controls overlap."""
 import copy
 import re
 import unittest
@@ -22,6 +22,7 @@ HELP = {
     "forge": "The GitHub or GitLab address (https:// only), the partner or organisation ID and the allow-list. An empty box is skipped.",
     "network": "Only if this PC needs them: a proxy address (http:// or https://) and DNS servers, separated by commas. An empty box is skipped.",
     "labview": "Type the LabVIEW version this PC uses. An empty box is skipped.",
+    "image": "Choose the container type, then the NI docker image version. The runner uses it; it is pulled at install time. (none) skips it.",
     "licences": "Shown because an NI docker image was chosen. Tick both licence boxes to continue.",
     "secrets": "Tokens and passwords are typed here only, never on the command line. Fill in only the ones you need; an empty box is skipped.",
 }
@@ -145,6 +146,8 @@ class Mutants(unittest.TestCase):
 
 # The custom pages (operator rehearsal, issue 329: "Overlapping text, no help"). A page of the classic UI is 266 x 130 dialog units.
 PAGE_HEIGHT = 130
+# A drop-down list (the NI docker image page) is created with the height of its opened list, which opens over the page; closed it is one 12u row.
+CLOSED = 12
 CONTROL = re.compile(r'^  \$\{NSD_Create(\w+)\} (\d+)u (\d+)u (\S+) (\d+)u "([^"]*)"$', re.M)
 
 
@@ -154,17 +157,17 @@ def controls(nsh, page):
 
 
 def check_pages(schema, nsh):
-    """Every page with a help text starts with it, and no two of its controls share a row of dialog units; all stay inside the page."""
+    """Every page starts with its help text, and no two of its controls share a row of dialog units; all stay inside the page, an opened list too."""
     helped = [p for p in schema["pages"] if p.get("help")]
-    assert [p["id"] for p in helped] == [p["id"] for p in schema["pages"] if p["id"] != "image"], "every page but the NI docker image page has help"
+    assert [p["id"] for p in helped] == [p["id"] for p in schema["pages"]], "every page has help"
     for p in helped:
         made = controls(nsh, p["id"])
         assert made[0] == ("Label", 0, S.HELP_HEIGHT, p["help"]), p["id"]
         assert len(made) == 1 + sum(len(i["choices"]) if i.get("setter") else 1 if i["kind"] == "licence" else 2 for i in schema["inputs"] if i["page"] == p["id"]), p["id"]
-        rows = sorted((y, y + h) for _k, y, h, _t in made)
+        rows = sorted((y, y + (CLOSED if k == "DropList" else h)) for k, y, h, _t in made)
         for (top, bottom), (next_top, _) in zip(rows, rows[1:]):
             assert bottom <= next_top, "%s: a control at %du..%du overlaps the next at %du" % (p["id"], top, bottom, next_top)
-        assert rows[-1][1] <= PAGE_HEIGHT, p["id"]
+        assert max(y + h for _k, y, h, _t in made) <= PAGE_HEIGHT, p["id"]
 
 
 class Pages(unittest.TestCase):
@@ -183,9 +186,10 @@ class Pages(unittest.TestCase):
             self.assertLessEqual(len(text), 130)
             self.assertNotRegex(text, r'["$`]|NI image')
 
-    def test_the_image_page_keeps_its_controls_for_the_separate_change(self):
-        self.assertEqual(controls(SCREENS, "image"), [("Label", 4, 8, "NI docker image container type"), ("Text", 12, 12, ""),
-                                                      ("Label", 22, 8, "NI docker image year"), ("Text", 30, 12, "")])
+    def test_the_image_page_is_its_help_and_two_drop_down_lists_on_the_same_rule(self):
+        self.assertEqual(controls(SCREENS, "image"), [("Label", 0, S.HELP_HEIGHT, HELP["image"]),
+                                                      ("Label", 24, 8, "NI docker image container type"), ("DropList", 33, 52, ""),
+                                                      ("Label", 48, 8, "NI docker image version"), ("DropList", 57, 70, "")])
 
 
 class PageMutants(unittest.TestCase):
@@ -208,6 +212,11 @@ class PageMutants(unittest.TestCase):
         del [p for p in bare["pages"] if p["id"] == "network"][0]["help"]
         with self.assertRaises(AssertionError):
             check_pages(bare, S.generate_nsh(bare))
+
+    def test_m8_an_opened_list_past_the_page(self):
+        with mock.patch.object(S, "IMAGE_LISTS", (52, 80)):
+            with self.assertRaises(AssertionError):
+                check_pages(self.schema, S.generate_nsh(self.schema))
 
 
 if __name__ == "__main__":
